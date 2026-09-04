@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>DebugAssistance</RootNamespace>
+        <AssemblyName>DebugAssistance</AssemblyName>
+    </PropertyGroup>
+</Project>

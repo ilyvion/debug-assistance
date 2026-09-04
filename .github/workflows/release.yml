@@ -1,0 +1,33 @@
+name: Release
+
+on:
+    push:
+        tags:
+            # This will only run the release workflow when it's tagged with a version
+            # tag.
+            - "v*"
+
+jobs:
+    build:
+        uses: ilyvion/rimworld-utils/.github/workflows/build_mod.yml@main
+        with:
+            mod_name: "DebugAssistance"
+            rw_versions: |-
+                1.6
+            license_files: |-
+                LICENSE
+                LICENSE.Apache-2.0
+                LICENSE.MIT
+            artifact_suffix: Release
+
+    release:
+        permissions:
+            contents: write
+        needs: build
+        uses: ilyvion/rimworld-utils/.github/workflows/release_mod.yml@main
+        secrets: inherit
+        with:
+            artifact_name: ${{ needs.build.outputs.artifact_name }}
+            mod_name: "DebugAssistance"
+            rw_versions: |-
+                1.6

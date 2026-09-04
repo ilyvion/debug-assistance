@@ -1,0 +1,9 @@
+<Project>
+    <PropertyGroup>
+        <UseLaboratory>true</UseLaboratory>
+    </PropertyGroup>
+    <Import Project="..\rimworld-utils\Common.props" />
+    <PropertyGroup>
+        <VersionPrefix>0.1.0</VersionPrefix>
+    </PropertyGroup>
+</Project>
