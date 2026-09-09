@@ -4,4 +4,4 @@
 <#@ include file="../../../rimworld-utils/IlyvionLaboratoryModSharedStatic.ttinclude" #>
 #nullable enable
 
-<# IlyvionLaboratoryModSharedStatic("DebugAssistance", "DebugAssistanceMod"); #>
+<# IlyvionLaboratoryModSharedStatic("DebugAssistance", "DebugAssistanceMod", settingsClassName: "Settings"); #>

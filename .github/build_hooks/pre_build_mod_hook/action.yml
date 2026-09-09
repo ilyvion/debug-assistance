@@ -1,0 +1,27 @@
+runs:
+    using: "composite"
+    steps:
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+              node-version-file: "web/.nvmrc"
+
+        - name: Install web/ dependencies
+          shell: bash
+          working-directory: web
+          run: npm ci
+
+        - name: Lint web/ client
+          shell: bash
+          working-directory: web
+          run: npm run lint
+
+        - name: Typecheck web/ client
+          shell: bash
+          working-directory: web
+          run: npm run typecheck
+
+        - name: Test web/ client
+          shell: bash
+          working-directory: web
+          run: npm test

@@ -1,0 +1,103 @@
+@import '@catppuccin/palette/css/catppuccin.css';
+
+/*
+ * Semantic --ctp-* aliases resolving to the Catppuccin Frappe (dark) or Latte
+ * (light) flavor. Frappe is the fallback/default; an explicit .frappe/.latte
+ * class on <html> (set by the theme toggle) always wins, and in the absence
+ * of one, prefers-color-scheme picks Latte for light-OS users.
+ */
+:root,
+:root.frappe {
+    color-scheme: dark;
+
+    --ctp-rosewater: var(--ctp-frappe-rosewater);
+    --ctp-flamingo: var(--ctp-frappe-flamingo);
+    --ctp-pink: var(--ctp-frappe-pink);
+    --ctp-mauve: var(--ctp-frappe-mauve);
+    --ctp-red: var(--ctp-frappe-red);
+    --ctp-maroon: var(--ctp-frappe-maroon);
+    --ctp-peach: var(--ctp-frappe-peach);
+    --ctp-yellow: var(--ctp-frappe-yellow);
+    --ctp-green: var(--ctp-frappe-green);
+    --ctp-teal: var(--ctp-frappe-teal);
+    --ctp-sky: var(--ctp-frappe-sky);
+    --ctp-sapphire: var(--ctp-frappe-sapphire);
+    --ctp-blue: var(--ctp-frappe-blue);
+    --ctp-lavender: var(--ctp-frappe-lavender);
+    --ctp-text: var(--ctp-frappe-text);
+    --ctp-subtext1: var(--ctp-frappe-subtext1);
+    --ctp-subtext0: var(--ctp-frappe-subtext0);
+    --ctp-overlay2: var(--ctp-frappe-overlay2);
+    --ctp-overlay1: var(--ctp-frappe-overlay1);
+    --ctp-overlay0: var(--ctp-frappe-overlay0);
+    --ctp-surface2: var(--ctp-frappe-surface2);
+    --ctp-surface1: var(--ctp-frappe-surface1);
+    --ctp-surface0: var(--ctp-frappe-surface0);
+    --ctp-base: var(--ctp-frappe-base);
+    --ctp-mantle: var(--ctp-frappe-mantle);
+    --ctp-crust: var(--ctp-frappe-crust);
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        color-scheme: light;
+
+        --ctp-rosewater: var(--ctp-latte-rosewater);
+        --ctp-flamingo: var(--ctp-latte-flamingo);
+        --ctp-pink: var(--ctp-latte-pink);
+        --ctp-mauve: var(--ctp-latte-mauve);
+        --ctp-red: var(--ctp-latte-red);
+        --ctp-maroon: var(--ctp-latte-maroon);
+        --ctp-peach: var(--ctp-latte-peach);
+        --ctp-yellow: var(--ctp-latte-yellow);
+        --ctp-green: var(--ctp-latte-green);
+        --ctp-teal: var(--ctp-latte-teal);
+        --ctp-sky: var(--ctp-latte-sky);
+        --ctp-sapphire: var(--ctp-latte-sapphire);
+        --ctp-blue: var(--ctp-latte-blue);
+        --ctp-lavender: var(--ctp-latte-lavender);
+        --ctp-text: var(--ctp-latte-text);
+        --ctp-subtext1: var(--ctp-latte-subtext1);
+        --ctp-subtext0: var(--ctp-latte-subtext0);
+        --ctp-overlay2: var(--ctp-latte-overlay2);
+        --ctp-overlay1: var(--ctp-latte-overlay1);
+        --ctp-overlay0: var(--ctp-latte-overlay0);
+        --ctp-surface2: var(--ctp-latte-surface2);
+        --ctp-surface1: var(--ctp-latte-surface1);
+        --ctp-surface0: var(--ctp-latte-surface0);
+        --ctp-base: var(--ctp-latte-base);
+        --ctp-mantle: var(--ctp-latte-mantle);
+        --ctp-crust: var(--ctp-latte-crust);
+    }
+}
+
+:root.latte {
+    color-scheme: light;
+
+    --ctp-rosewater: var(--ctp-latte-rosewater);
+    --ctp-flamingo: var(--ctp-latte-flamingo);
+    --ctp-pink: var(--ctp-latte-pink);
+    --ctp-mauve: var(--ctp-latte-mauve);
+    --ctp-red: var(--ctp-latte-red);
+    --ctp-maroon: var(--ctp-latte-maroon);
+    --ctp-peach: var(--ctp-latte-peach);
+    --ctp-yellow: var(--ctp-latte-yellow);
+    --ctp-green: var(--ctp-latte-green);
+    --ctp-teal: var(--ctp-latte-teal);
+    --ctp-sky: var(--ctp-latte-sky);
+    --ctp-sapphire: var(--ctp-latte-sapphire);
+    --ctp-blue: var(--ctp-latte-blue);
+    --ctp-lavender: var(--ctp-latte-lavender);
+    --ctp-text: var(--ctp-latte-text);
+    --ctp-subtext1: var(--ctp-latte-subtext1);
+    --ctp-subtext0: var(--ctp-latte-subtext0);
+    --ctp-overlay2: var(--ctp-latte-overlay2);
+    --ctp-overlay1: var(--ctp-latte-overlay1);
+    --ctp-overlay0: var(--ctp-latte-overlay0);
+    --ctp-surface2: var(--ctp-latte-surface2);
+    --ctp-surface1: var(--ctp-latte-surface1);
+    --ctp-surface0: var(--ctp-latte-surface0);
+    --ctp-base: var(--ctp-latte-base);
+    --ctp-mantle: var(--ctp-latte-mantle);
+    --ctp-crust: var(--ctp-latte-crust);
+}

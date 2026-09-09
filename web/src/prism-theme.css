@@ -1,0 +1,58 @@
+/* Token palette layered on top of Prism's line-numbers/line-highlight plugin CSS, using the same
+   --ctp-* Catppuccin variables (theme.css) as the rest of the page, so token colors always follow
+   the page's actual selected theme rather than the OS's raw light/dark preference. */
+
+pre[class*='language-'] {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype {
+    color: var(--ctp-overlay0);
+    font-style: italic;
+}
+
+.token.string,
+.token.char {
+    color: var(--ctp-green);
+}
+
+.token.number,
+.token.boolean {
+    color: var(--ctp-peach);
+}
+
+.token.keyword {
+    color: var(--ctp-mauve);
+}
+
+.token.operator {
+    color: var(--ctp-sky);
+}
+
+.token.function,
+.token.class-name {
+    color: var(--ctp-blue);
+}
+
+.token.punctuation {
+    color: var(--ctp-overlay2);
+}
+
+.line-highlight {
+    /* prism-line-highlight.css's default margin-top (1em) assumes the pre's own padding-top is
+       also 1em — it converts the plugin's content-box-relative offset back into the padding-box-
+       relative offset `position: absolute; top` actually measures from. Must track our own
+       padding-top above (10px) or the highlighted line drifts away from the line it marks. */
+    margin-top: 10px;
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}

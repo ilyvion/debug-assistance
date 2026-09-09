@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <DebugAssistance.FrontEnd.Common.Unresolved>unresolved</DebugAssistance.FrontEnd.Common.Unresolved>
+
+    <DebugAssistance.FrontEnd.App.FilterPlaceholder>Filter errors…</DebugAssistance.FrontEnd.App.FilterPlaceholder>
+    <DebugAssistance.FrontEnd.App.ServerUnreachable>Server unreachable</DebugAssistance.FrontEnd.App.ServerUnreachable>
+    <DebugAssistance.FrontEnd.App.SelectErrorPlaceholder>Select an error from the list to see its details.</DebugAssistance.FrontEnd.App.SelectErrorPlaceholder>
+
+    <DebugAssistance.FrontEnd.ErrorList.Empty>No errors have been captured yet.</DebugAssistance.FrontEnd.ErrorList.Empty>
+    <DebugAssistance.FrontEnd.ErrorList.NoMatches>No matches.</DebugAssistance.FrontEnd.ErrorList.NoMatches>
+    <DebugAssistance.FrontEnd.ErrorList.EntrySummary>{0} · ×{1} · last seen {2}</DebugAssistance.FrontEnd.ErrorList.EntrySummary>
+    <DebugAssistance.FrontEnd.ErrorList.DismissTooltip>Dismiss this error.</DebugAssistance.FrontEnd.ErrorList.DismissTooltip>
+    <DebugAssistance.FrontEnd.ErrorList.MarkAllSeen>Mark all as seen</DebugAssistance.FrontEnd.ErrorList.MarkAllSeen>
+    <DebugAssistance.FrontEnd.ErrorList.ClearAll>Clear all</DebugAssistance.FrontEnd.ErrorList.ClearAll>
+    <DebugAssistance.FrontEnd.ErrorList.ClearAllConfirm>Dismiss all {0} captured error(s)? This cannot be undone.</DebugAssistance.FrontEnd.ErrorList.ClearAllConfirm>
+    <DebugAssistance.FrontEnd.ErrorList.Confirm>Confirm</DebugAssistance.FrontEnd.ErrorList.Confirm>
+    <DebugAssistance.FrontEnd.ErrorList.Cancel>Cancel</DebugAssistance.FrontEnd.ErrorList.Cancel>
+    <DebugAssistance.FrontEnd.ErrorList.PauseCapture>Pause capturing</DebugAssistance.FrontEnd.ErrorList.PauseCapture>
+    <DebugAssistance.FrontEnd.ErrorList.PauseCaptureTooltip>Pause capturing new errors. Already-captured ones are left in place.</DebugAssistance.FrontEnd.ErrorList.PauseCaptureTooltip>
+    <DebugAssistance.FrontEnd.ErrorList.ResumeCapture>Resume capturing</DebugAssistance.FrontEnd.ErrorList.ResumeCapture>
+    <DebugAssistance.FrontEnd.ErrorList.ResumeCaptureTooltip>Resume capturing new errors.</DebugAssistance.FrontEnd.ErrorList.ResumeCaptureTooltip>
+
+    <DebugAssistance.FrontEnd.ErrorDetail.SeenSummary>Seen {0} time(s) — first {1}, last {2}</DebugAssistance.FrontEnd.ErrorDetail.SeenSummary>
+    <DebugAssistance.FrontEnd.ErrorDetail.HarmonyRef>Harmony ref: [Ref {0}]</DebugAssistance.FrontEnd.ErrorDetail.HarmonyRef>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyAiPrompt>Generate and copy AI prompt</DebugAssistance.FrontEnd.ErrorDetail.CopyAiPrompt>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptTooltip>Copy a Markdown-formatted description of this error, including decompiled source snippets, to hand to an AI agent.</DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptTooltip>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptCopied>Copied to clipboard.</DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptCopied>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptFailed>Could not copy the AI prompt: {0}</DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptFailed>
+    <DebugAssistance.FrontEnd.ErrorDetail.DecompileAll>Decompile all</DebugAssistance.FrontEnd.ErrorDetail.DecompileAll>
+    <DebugAssistance.FrontEnd.ErrorDetail.DecompilingAllProgress>Decompiling… ({0} / {1})</DebugAssistance.FrontEnd.ErrorDetail.DecompilingAllProgress>
+    <DebugAssistance.FrontEnd.ErrorDetail.ShowRawStackTrace>Show raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.ShowRawStackTrace>
+    <DebugAssistance.FrontEnd.ErrorDetail.HideRawStackTrace>Hide raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.HideRawStackTrace>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTrace>Copy raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTrace>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceCopied>Copied to clipboard.</DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceCopied>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceFailed>Could not copy the stack trace: {0}</DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceFailed>
+
+    <DebugAssistance.FrontEnd.FrameRow.Decompile>Decompile</DebugAssistance.FrontEnd.FrameRow.Decompile>
+    <DebugAssistance.FrontEnd.FrameRow.DecompilePatched>Decompile patched</DebugAssistance.FrontEnd.FrameRow.DecompilePatched>
+    <DebugAssistance.FrontEnd.FrameRow.Expand>Expand</DebugAssistance.FrontEnd.FrameRow.Expand>
+    <DebugAssistance.FrontEnd.FrameRow.ExpandPatched>Expand patched</DebugAssistance.FrontEnd.FrameRow.ExpandPatched>
+    <DebugAssistance.FrontEnd.FrameRow.Collapse>Collapse</DebugAssistance.FrontEnd.FrameRow.Collapse>
+    <DebugAssistance.FrontEnd.FrameRow.CollapsePatched>Collapse patched</DebugAssistance.FrontEnd.FrameRow.CollapsePatched>
+    <DebugAssistance.FrontEnd.FrameRow.Decompiling>Decompiling…</DebugAssistance.FrontEnd.FrameRow.Decompiling>
+    <DebugAssistance.FrontEnd.FrameRow.TooltipMod>Mod: {0}</DebugAssistance.FrontEnd.FrameRow.TooltipMod>
+    <DebugAssistance.FrontEnd.FrameRow.TooltipAssembly>Assembly: {0}</DebugAssistance.FrontEnd.FrameRow.TooltipAssembly>
+    <DebugAssistance.FrontEnd.FrameRow.TooltipPatchOwner>Patch owner: {0}</DebugAssistance.FrontEnd.FrameRow.TooltipPatchOwner>
+    <DebugAssistance.FrontEnd.FrameRow.TooltipPatchKind>Patch kind: {0}</DebugAssistance.FrontEnd.FrameRow.TooltipPatchKind>
+    <DebugAssistance.FrontEnd.FrameRow.PatchThisMethod>Patch this method</DebugAssistance.FrontEnd.FrameRow.PatchThisMethod>
+    <DebugAssistance.FrontEnd.FrameRow.PatchThisMethodUnavailable>This frame's method can't be resolved for patching (unresolved reference, or its assembly isn't currently loaded).</DebugAssistance.FrontEnd.FrameRow.PatchThisMethodUnavailable>
+
+    <DebugAssistance.FrontEnd.SaveLoad.Title>Save / Load</DebugAssistance.FrontEnd.SaveLoad.Title>
+    <DebugAssistance.FrontEnd.SaveLoad.SaveAsLabel>Save current captures as</DebugAssistance.FrontEnd.SaveLoad.SaveAsLabel>
+    <DebugAssistance.FrontEnd.SaveLoad.SaveButton>Save</DebugAssistance.FrontEnd.SaveLoad.SaveButton>
+    <DebugAssistance.FrontEnd.SaveLoad.AlreadyExists>A save named '{0}' already exists.</DebugAssistance.FrontEnd.SaveLoad.AlreadyExists>
+    <DebugAssistance.FrontEnd.SaveLoad.Overwrite>Overwrite</DebugAssistance.FrontEnd.SaveLoad.Overwrite>
+    <DebugAssistance.FrontEnd.SaveLoad.Cancel>Cancel</DebugAssistance.FrontEnd.SaveLoad.Cancel>
+    <DebugAssistance.FrontEnd.SaveLoad.NoSaves>No saved captures found.</DebugAssistance.FrontEnd.SaveLoad.NoSaves>
+    <DebugAssistance.FrontEnd.SaveLoad.Merge>Merge</DebugAssistance.FrontEnd.SaveLoad.Merge>
+    <DebugAssistance.FrontEnd.SaveLoad.Replace>Replace</DebugAssistance.FrontEnd.SaveLoad.Replace>
+    <DebugAssistance.FrontEnd.SaveLoad.DeleteTooltip>Delete this saved capture.</DebugAssistance.FrontEnd.SaveLoad.DeleteTooltip>
+    <DebugAssistance.FrontEnd.SaveLoad.ReplaceConfirm>This will clear all currently captured errors before loading. Continue?</DebugAssistance.FrontEnd.SaveLoad.ReplaceConfirm>
+    <DebugAssistance.FrontEnd.SaveLoad.Confirm>Confirm</DebugAssistance.FrontEnd.SaveLoad.Confirm>
+    <DebugAssistance.FrontEnd.SaveLoad.DeleteConfirm>Delete '{0}'?</DebugAssistance.FrontEnd.SaveLoad.DeleteConfirm>
+    <DebugAssistance.FrontEnd.SaveLoad.Saved>Saved {0} captured error(s).</DebugAssistance.FrontEnd.SaveLoad.Saved>
+    <DebugAssistance.FrontEnd.SaveLoad.Loaded>Loaded {0} captured error(s).</DebugAssistance.FrontEnd.SaveLoad.Loaded>
+
+    <DebugAssistance.FrontEnd.Theme.Label>Theme</DebugAssistance.FrontEnd.Theme.Label>
+    <DebugAssistance.FrontEnd.Theme.Light>Light theme</DebugAssistance.FrontEnd.Theme.Light>
+    <DebugAssistance.FrontEnd.Theme.System>Match system</DebugAssistance.FrontEnd.Theme.System>
+    <DebugAssistance.FrontEnd.Theme.Dark>Dark theme</DebugAssistance.FrontEnd.Theme.Dark>
+
+    <DebugAssistance.FrontEnd.FileBrowser.PathPlaceholder>Enter or browse for a path…</DebugAssistance.FrontEnd.FileBrowser.PathPlaceholder>
+    <DebugAssistance.FrontEnd.FileBrowser.Browse>Browse…</DebugAssistance.FrontEnd.FileBrowser.Browse>
+    <DebugAssistance.FrontEnd.FileBrowser.Up>↑ Up</DebugAssistance.FrontEnd.FileBrowser.Up>
+    <DebugAssistance.FrontEnd.FileBrowser.Loading>Loading…</DebugAssistance.FrontEnd.FileBrowser.Loading>
+    <DebugAssistance.FrontEnd.FileBrowser.Empty>No entries.</DebugAssistance.FrontEnd.FileBrowser.Empty>
+    <DebugAssistance.FrontEnd.FileBrowser.Close>Close</DebugAssistance.FrontEnd.FileBrowser.Close>
+    <DebugAssistance.FrontEnd.FileBrowser.ShortcutMods>Mods</DebugAssistance.FrontEnd.FileBrowser.ShortcutMods>
+    <DebugAssistance.FrontEnd.FileBrowser.ShortcutWorkshop>Workshop</DebugAssistance.FrontEnd.FileBrowser.ShortcutWorkshop>
+    <DebugAssistance.FrontEnd.FileBrowser.Go>Go</DebugAssistance.FrontEnd.FileBrowser.Go>
+
+    <DebugAssistance.FrontEnd.HotPatch.Title>Hot Patch</DebugAssistance.FrontEnd.HotPatch.Title>
+    <DebugAssistance.FrontEnd.HotPatch.Back>Back</DebugAssistance.FrontEnd.HotPatch.Back>
+    <DebugAssistance.FrontEnd.HotPatch.NoSandboxWarning>There is no sandboxing: a bug in your patch can crash or corrupt the game exactly like a bug in any other Harmony patch.</DebugAssistance.FrontEnd.HotPatch.NoSandboxWarning>
+    <DebugAssistance.FrontEnd.HotPatch.AssemblySectionTitle>Patch assembly</DebugAssistance.FrontEnd.HotPatch.AssemblySectionTitle>
+    <DebugAssistance.FrontEnd.HotPatch.Load>Load</DebugAssistance.FrontEnd.HotPatch.Load>
+    <DebugAssistance.FrontEnd.HotPatch.Reload>Reload</DebugAssistance.FrontEnd.HotPatch.Reload>
+    <DebugAssistance.FrontEnd.HotPatch.Loaded>Loaded {0}#{1}.</DebugAssistance.FrontEnd.HotPatch.Loaded>
+    <DebugAssistance.FrontEnd.HotPatch.PatchesRemovedBeforeReload>{0} patch(es) removed before reload:</DebugAssistance.FrontEnd.HotPatch.PatchesRemovedBeforeReload>
+    <DebugAssistance.FrontEnd.HotPatch.ReloadWillLeaveOrRemovePatches>{0} patch(es) are currently active from the previous load of this assembly. Remove them, or keep them running against the old code?</DebugAssistance.FrontEnd.HotPatch.ReloadWillLeaveOrRemovePatches>
+    <DebugAssistance.FrontEnd.HotPatch.RemoveOldPatches>Remove old patches</DebugAssistance.FrontEnd.HotPatch.RemoveOldPatches>
+    <DebugAssistance.FrontEnd.HotPatch.KeepOldPatches>Keep old patches</DebugAssistance.FrontEnd.HotPatch.KeepOldPatches>
+    <DebugAssistance.FrontEnd.HotPatch.LoadedAssembliesTitle>Already loaded assemblies</DebugAssistance.FrontEnd.HotPatch.LoadedAssembliesTitle>
+    <DebugAssistance.FrontEnd.HotPatch.NoLoadedAssemblies>No patch assemblies loaded yet this session.</DebugAssistance.FrontEnd.HotPatch.NoLoadedAssemblies>
+    <DebugAssistance.FrontEnd.HotPatch.PatchMethodSectionTitle>Patch method</DebugAssistance.FrontEnd.HotPatch.PatchMethodSectionTitle>
+    <DebugAssistance.FrontEnd.HotPatch.PatchMethodNeedsAssembly>Load a patch assembly to choose a patch method.</DebugAssistance.FrontEnd.HotPatch.PatchMethodNeedsAssembly>
+    <DebugAssistance.FrontEnd.HotPatch.PatchTypeLabel>Patch type</DebugAssistance.FrontEnd.HotPatch.PatchTypeLabel>
+    <DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethods>Only show compatible methods</DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethods>
+    <DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethodsTooltip>Uncheck to browse every method in the loaded assembly, even ones that do not look compatible with the chosen target method and patch type.</DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethodsTooltip>
+    <DebugAssistance.FrontEnd.HotPatch.TargetMethodSectionTitle>Target method</DebugAssistance.FrontEnd.HotPatch.TargetMethodSectionTitle>
+    <DebugAssistance.FrontEnd.HotPatch.Apply>Apply patch</DebugAssistance.FrontEnd.HotPatch.Apply>
+    <DebugAssistance.FrontEnd.HotPatch.ApplyFailed>Applying the patch failed.</DebugAssistance.FrontEnd.HotPatch.ApplyFailed>
+    <DebugAssistance.FrontEnd.HotPatch.ActivePatchesTitle>Active patches</DebugAssistance.FrontEnd.HotPatch.ActivePatchesTitle>
+    <DebugAssistance.FrontEnd.HotPatch.NoActivePatches>No on-the-fly patches are currently active.</DebugAssistance.FrontEnd.HotPatch.NoActivePatches>
+    <DebugAssistance.FrontEnd.HotPatch.Remove>Remove</DebugAssistance.FrontEnd.HotPatch.Remove>
+    <DebugAssistance.FrontEnd.HotPatch.RemoveConfirm>Remove this patch? It will stop taking effect immediately.</DebugAssistance.FrontEnd.HotPatch.RemoveConfirm>
+    <DebugAssistance.FrontEnd.HotPatch.Confirm>Confirm</DebugAssistance.FrontEnd.HotPatch.Confirm>
+    <DebugAssistance.FrontEnd.HotPatch.Cancel>Cancel</DebugAssistance.FrontEnd.HotPatch.Cancel>
+    <DebugAssistance.FrontEnd.HotPatch.ChangeMethod>Change</DebugAssistance.FrontEnd.HotPatch.ChangeMethod>
+    <DebugAssistance.FrontEnd.HotPatch.MethodFilterPlaceholder>Filter methods by name, or Type.Method…</DebugAssistance.FrontEnd.HotPatch.MethodFilterPlaceholder>
+    <DebugAssistance.FrontEnd.HotPatch.SearchingMethods>Searching…</DebugAssistance.FrontEnd.HotPatch.SearchingMethods>
+    <DebugAssistance.FrontEnd.HotPatch.TypeToSearchMethods>Type at least 2 characters to search every loaded assembly.</DebugAssistance.FrontEnd.HotPatch.TypeToSearchMethods>
+    <DebugAssistance.FrontEnd.HotPatch.NoMethodsFound>No methods found.</DebugAssistance.FrontEnd.HotPatch.NoMethodsFound>
+    <DebugAssistance.FrontEnd.HotPatch.AllAssemblies>All assemblies</DebugAssistance.FrontEnd.HotPatch.AllAssemblies>
+    <DebugAssistance.FrontEnd.HotPatch.GlobalNamespace>(no namespace)</DebugAssistance.FrontEnd.HotPatch.GlobalNamespace>
+    <DebugAssistance.FrontEnd.HotPatch.Up>Up</DebugAssistance.FrontEnd.HotPatch.Up>
+    <DebugAssistance.FrontEnd.HotPatch.Loading>Loading…</DebugAssistance.FrontEnd.HotPatch.Loading>
+    <DebugAssistance.FrontEnd.HotPatch.Empty>Nothing here.</DebugAssistance.FrontEnd.HotPatch.Empty>
+    <DebugAssistance.FrontEnd.HotPatch.TypeCount>{0} types</DebugAssistance.FrontEnd.HotPatch.TypeCount>
+    <DebugAssistance.FrontEnd.HotPatch.MethodCount>{0} methods</DebugAssistance.FrontEnd.HotPatch.MethodCount>
+    <DebugAssistance.FrontEnd.HotPatch.ScaffoldSectionTitle>Generate patch project…</DebugAssistance.FrontEnd.HotPatch.ScaffoldSectionTitle>
+    <DebugAssistance.FrontEnd.HotPatch.ScaffoldProjectNameLabel>Project name</DebugAssistance.FrontEnd.HotPatch.ScaffoldProjectNameLabel>
+    <DebugAssistance.FrontEnd.HotPatch.Generate>Generate</DebugAssistance.FrontEnd.HotPatch.Generate>
+    <DebugAssistance.FrontEnd.HotPatch.ScaffoldSuccess>Project generated at {0}.</DebugAssistance.FrontEnd.HotPatch.ScaffoldSuccess>
+    <DebugAssistance.FrontEnd.HotPatch.ScaffoldFailed>Generating the project failed.</DebugAssistance.FrontEnd.HotPatch.ScaffoldFailed>
+    <DebugAssistance.FrontEnd.HotPatch.CopyDebugPrompt>Generate and copy debug prompt</DebugAssistance.FrontEnd.HotPatch.CopyDebugPrompt>
+    <DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptTooltip>Copy a Markdown-formatted prompt asking an AI agent to analyze this error and write the fix as a hot patch in the project generated above.</DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptTooltip>
+    <DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptNeedsScaffold>Generate a patch project above first.</DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptNeedsScaffold>
+    <DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptCopied>Copied to clipboard.</DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptCopied>
+    <DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptFailed>Could not copy the debug prompt: {0}</DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptFailed>
+</LanguageData>

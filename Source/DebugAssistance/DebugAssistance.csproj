@@ -3,4 +3,46 @@
         <RootNamespace>DebugAssistance</RootNamespace>
         <AssemblyName>DebugAssistance</AssemblyName>
     </PropertyGroup>
+    <ItemGroup>
+        <Publicize Include="Assembly-CSharp:Verse.GenFilePaths.FolderUnderSaveData" />
+        <Publicize Include="Assembly-CSharp:Verse.DebugWindowsOpener.DrawButtons" />
+        <!--
+            Whole-assembly rather than per-member: decompiling a Harmony-patched method's actual
+            merged replacement (PatchedMethodBuilder/PatchedMethodAssemblyWriter) needs Harmony's
+            own internal patch-composition machinery (HarmonySharedState, PatchFunctions,
+            MethodPatcher, MethodCopier, Emitter) plus the Mono.Cecil/MonoMod.Utils types 0Harmony
+            ships merged inside itself.
+        -->
+        <Publicize Include="0Harmony" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="ICSharpCode.Decompiler" Version="10.1.1.8388" />
+        <!--
+            Lib.Harmony and ICSharpCode.Decompiler (via System.Reflection.Metadata) transitively
+            pull different System.Memory versions; pinning one explicitly here is what actually
+            resolves the MSB3277 conflict warning, since letting NuGet pick between two transitive
+            versions on its own does not.
+        -->
+        <PackageReference Include="System.Memory" Version="4.6.3" />
+        <!-- JSON for the web Exception Inspector's HTTP API (Web/DebugAssistanceServer.cs). -->
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    </ItemGroup>
+
+    <!--
+      Builds the web/ Vite project (the Site/ browser UI) as part of the .NET build, so
+      `dotnet build`/`build.sh` alone is enough to produce a working mod. Requires Node/npm on
+      PATH; see web/.nvmrc for the pinned version and web/package.json for scripts.
+    -->
+    <PropertyGroup>
+        <WebDir>$(MSBuildThisFileDirectory)../../web</WebDir>
+    </PropertyGroup>
+
+    <Target Name="BuildWebClient" BeforeTargets="Build" Condition="Exists('$(WebDir)')">
+        <Exec
+            Command="npm ci"
+            WorkingDirectory="$(WebDir)"
+            Condition="!Exists('$(WebDir)/node_modules')"
+        />
+        <Exec Command="npm run build" WorkingDirectory="$(WebDir)" />
+    </Target>
 </Project>

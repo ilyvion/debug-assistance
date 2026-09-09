@@ -1,0 +1,199 @@
+/* Semantic names layered on top of theme.css's --ctp-* Catppuccin palette (Frappe/Latte, switched
+   by the theme toggle or prefers-color-scheme) so the rest of this file — and every component's
+   own styles — never has to spell out a flavor or a raw hex value. */
+:root {
+    --bg: var(--ctp-base);
+    --bg-alt: var(--ctp-mantle);
+    --bg-hover: var(--ctp-surface0);
+    --bg-selected: var(--ctp-surface1);
+    --bg-unread: color-mix(in srgb, var(--ctp-peach) 22%, var(--bg));
+    --bg-unread-hover: color-mix(in srgb, var(--ctp-peach) 36%, var(--bg));
+    --bg-danger-hover: color-mix(in srgb, var(--ctp-red) 70%, var(--bg));
+    --border: var(--ctp-surface0);
+    --text: var(--ctp-text);
+    --text-muted: var(--ctp-subtext0);
+    --accent: var(--ctp-blue);
+    --accent-text: var(--ctp-base);
+    --danger: var(--ctp-red);
+    --code-bg: var(--ctp-mantle);
+    --shadow: rgba(0, 0, 0, 0.3);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family:
+        'Segoe UI',
+        system-ui,
+        -apple-system,
+        sans-serif;
+    font-size: 14px;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+    background: var(--bg-hover);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+button.primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+}
+
+input[type='text'],
+input[type='search'] {
+    font: inherit;
+    color: inherit;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+code,
+pre {
+    font-family:
+        'Cascadia Mono', Consolas, 'DejaVu Sans Mono', 'SF Mono', monospace;
+}
+
+.spinner {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    border: 2px solid currentcolor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.status.error {
+    color: var(--danger);
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.modal-dialog {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 30px var(--shadow);
+    overflow-y: auto;
+    padding: 16px 20px 20px;
+}
+
+.modal-dialog header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-dialog header h3 {
+    margin: 0;
+}
+
+.modal-dialog .close {
+    border: none;
+    background: transparent;
+    padding: 2px 6px;
+}
+
+.browse-panel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-alt);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.browse-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.browse-toolbar button {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.browse-breadcrumbs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.browse-crumb {
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    color: inherit;
+    font-size: inherit;
+}
+
+.browse-crumb-sep {
+    opacity: 0.6;
+}
+
+.browse-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.browse-list li {
+    border-bottom: 1px solid var(--border);
+}
+
+.browse-list li:last-child {
+    border-bottom: none;
+}

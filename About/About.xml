@@ -3,7 +3,11 @@
     <packageId>ilyvion.DebugAssistance</packageId>
     <name>Debug Assistance</name>
     <author>ilyvion</author>
-    <description>TODO: describe the mod.</description>
+    <description>Adds a web-based Error Inspector and Hot Patch view for finding, understanding, and fixing mod errors without restarting the game.
+
+Open the Error Inspector from a debug hotbar button or a browser to see a filterable, sortable list of captured errors with per-frame mod attribution, decompile any frame or Harmony patch on the spot with the crashing line highlighted, and save/load/delete sets of errors to a file.
+
+The Hot Patch view lets you load a Harmony patch assembly you've built yourself, pick its Prefix/Postfix/Transpiler/Finalizer methods and a target method from any loaded mod, and apply or remove it live, without restarting the game. There is no sandboxing.</description>
     <supportedVersions>
         <li>1.6</li>
     </supportedVersions>
@@ -26,4 +30,8 @@
         <li>brrainz.harmony</li>
         <li>ilyvion.laboratory</li>
     </loadAfter>
+    <loadBefore>
+        <!-- Mostly just a trick to load before most other mods so we capture their errors if they happen early on -->
+        <li>ludeon.rimworld</li>
+    </loadBefore>
 </ModMetaData>

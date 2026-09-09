@@ -1,0 +1,471 @@
+using DebugAssistance.Capture;
+using DebugAssistance.HotPatch;
+using RimTestRedux;
+
+namespace DebugAssistance.Tests.HotPatch;
+
+[TestSuite]
+internal static class ProjectScaffolderTests
+{
+    private sealed class SignatureFixtureMethods
+    {
+        public static void StaticVoidNoParams() { }
+
+        public static bool StaticNonVoid(int index, ref bool flag) => flag && index == 0;
+
+        public static List<string> StaticReturningAGenericType(List<int> indices) =>
+            indices.ConvertAll(_ => "");
+
+#pragma warning disable CA1822 // Mark members as static -- deliberately an instance method
+        public bool InstanceNonVoid(string label) => label.Length == 0;
+#pragma warning restore CA1822
+    }
+
+    // Short enough (unlike SignatureFixtureMethods above) that a suggested project name built from
+    // it fits within GenText.IsValidFilename's 40-character cap without truncation.
+    private sealed class Short
+    {
+        public static void Go() { }
+    }
+
+    private static string UniqueFixtureDirectory() =>
+        Path.Combine(
+            Path.GetTempPath(),
+            "DebugAssistanceTests",
+            $"ProjectScaffolder_{Guid.NewGuid():N}"
+        );
+
+    private static CapturedError FixtureError() =>
+        new(
+            "System.NullReferenceException",
+            "Object reference not set to an instance of an object.",
+            "at Fixture.Method () [0x00000] in <filename unknown>:0",
+            [],
+            DateTime.UtcNow
+        );
+
+    private static CapturedError FixtureErrorWithShortTypeName() =>
+        new(
+            "System.Foo",
+            "Object reference not set to an instance of an object.",
+            "at Fixture.Method () [0x00000] in <filename unknown>:0",
+            [],
+            DateTime.UtcNow
+        );
+
+    [Test]
+    public static void ScaffoldRefusesAndWritesNothingWhenTheProjectSubdirectoryAlreadyHasFilesInIt()
+    {
+        var dir = UniqueFixtureDirectory();
+        var projectDir = Path.Combine(dir, "MyPatch");
+        _ = Directory.CreateDirectory(projectDir);
+        File.WriteAllText(Path.Combine(projectDir, "existing.txt"), "keep me");
+
+        var result = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        Assert.That(result.Success).Is.False();
+        Assert.That(result.Error is not null).Is.True();
+        Assert.ThatCollection(Directory.GetFileSystemEntries(projectDir)).Has.Count(1);
+    }
+
+    [Test]
+    public static void ScaffoldSucceedsEvenWhenTheChosenDirectoryAlreadyHasOtherFilesInIt()
+    {
+        var dir = UniqueFixtureDirectory();
+        _ = Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "unrelated.txt"), "leave me alone");
+
+        var result = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        Assert.That(result.Success).Is.True();
+        Assert.That(File.Exists(Path.Combine(dir, "MyPatch", "MyPatch.csproj"))).Is.True();
+        Assert.That(File.Exists(Path.Combine(dir, "unrelated.txt"))).Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldCreatesTheProjectSubdirectoryWhenItDoesNotExistYet()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        var result = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        Assert.That(result.Success).Is.True();
+        Assert.That(Directory.Exists(Path.Combine(dir, "MyPatch"))).Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldReturnsTheProjectSubdirectoryItWroteInto()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        var result = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        Assert.That(result.ProjectDirectory).Is.EqualTo(Path.Combine(dir, "MyPatch"));
+    }
+
+    [Test]
+    public static void ScaffoldReturnsWhereTheBuiltAssemblyWillEndUp()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        var result = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        Assert
+            .That(result.ExpectedAssemblyPath)
+            .Is.EqualTo(Path.Combine(dir, "MyPatch", "bin", "Debug", "net481", "MyPatch.dll"));
+    }
+
+    [Test]
+    public static void ScaffoldRefusesAndWritesNothingForAnInvalidProjectName()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        var result = ProjectScaffolder.Scaffold(dir, "Invalid/Name*", null, null);
+
+        Assert.That(result.Success).Is.False();
+        Assert.That(Directory.Exists(dir)).Is.False();
+    }
+
+    [Test]
+    public static void ScaffoldWritesTheFourExpectedFiles()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+        var projectDir = Path.Combine(dir, "MyPatch");
+
+        Assert.That(File.Exists(Path.Combine(projectDir, "MyPatch.csproj"))).Is.True();
+        Assert.That(File.Exists(Path.Combine(projectDir, "GlobalUsings.cs"))).Is.True();
+        Assert.That(File.Exists(Path.Combine(projectDir, ".gitignore"))).Is.True();
+        Assert.That(File.Exists(Path.Combine(projectDir, "Patches.cs"))).Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedCsprojReferencesEveryRequiredPackageAtItsPinnedVersion()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        Assert
+            .That(
+                csproj.Contains(
+                    "<TargetFramework>net481</TargetFramework>",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                csproj.Contains(
+                    "<PackageReference Include=\"Krafs.Rimworld.Ref\" Version=\"1.6.*\">",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                csproj.Contains(
+                    "<PackageReference Include=\"Lib.Harmony\" Version=\"2.4.2\">",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                csproj.Contains(
+                    "<PackageReference Include=\"Krafs.Publicizer\" Version=\"2.2.1\">",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                csproj.Contains(
+                    "<PackageReference Include=\"PolySharp\" Version=\"1.14.1\">",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                csproj.Contains("<ExcludeAssets>runtime</ExcludeAssets>", StringComparison.Ordinal)
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedGlobalUsingsCoversTheSameNamespacesAsTheRestOfTheRepo()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var globalUsings = File.ReadAllText(Path.Combine(dir, "MyPatch", "GlobalUsings.cs"));
+        Assert
+            .That(globalUsings.Contains("global using HarmonyLib;", StringComparison.Ordinal))
+            .Is.True();
+        Assert
+            .That(globalUsings.Contains("global using RimWorld;", StringComparison.Ordinal))
+            .Is.True();
+        Assert
+            .That(globalUsings.Contains("global using UnityEngine;", StringComparison.Ordinal))
+            .Is.True();
+        Assert
+            .That(globalUsings.Contains("global using Verse;", StringComparison.Ordinal))
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedGitignoreExcludesBuildOutputDirectories()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var gitignore = File.ReadAllText(Path.Combine(dir, "MyPatch", ".gitignore"));
+        Assert.That(gitignore.Contains("bin/", StringComparison.Ordinal)).Is.True();
+        Assert.That(gitignore.Contains("obj/", StringComparison.Ordinal)).Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedPatchesFileHasAGenericStubWhenNoTargetMethodIsGiven()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(patches.Contains("internal static bool Prefix()", StringComparison.Ordinal))
+            .Is.True();
+        Assert
+            .That(patches.Contains("internal static void Postfix()", StringComparison.Ordinal))
+            .Is.True();
+        Assert
+            .That(
+                patches.Contains(
+                    "internal static IEnumerable<CodeInstruction> Transpiler(",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                patches.Contains(
+                    "internal static Exception? Finalizer(Exception? __exception)",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedPatchesFileHasNoHeaderCommentWithoutACapturedError()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(patches.Contains("// Generated from a captured", StringComparison.Ordinal))
+            .Is.False();
+    }
+
+    [Test]
+    public static void ScaffoldedPatchesFileNamesTheOriginatingErrorWhenGivenAContext()
+    {
+        var dir = UniqueFixtureDirectory();
+        var context = FixtureError();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, context);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(
+                patches.Contains(
+                    "// Generated from a captured System.NullReferenceException: Object reference not set to an instance of an object.",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedPrefixAndPostfixReflectAStaticVoidTargetsRealParameters()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticNonVoid)
+        );
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(
+                patches.Contains(
+                    "internal static bool Prefix(int index, ref bool flag)",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                patches.Contains(
+                    "internal static void Postfix(int index, ref bool flag, ref bool __result)",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedSignaturesRenderGenericParameterAndReturnTypesAsValidCSharp()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticReturningAGenericType)
+        );
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(
+                patches.Contains(
+                    "internal static bool Prefix(System.Collections.Generic.List<int> indices)",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                patches.Contains(
+                    "internal static void Postfix(System.Collections.Generic.List<int> indices, ref System.Collections.Generic.List<string> __result)",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedPrefixOmitsResultButPostfixIncludesItForANonVoidReturn()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticNonVoid)
+        );
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert.That(patches.Contains("ref bool __result)", StringComparison.Ordinal)).Is.True();
+        Assert
+            .That(
+                patches.Contains(
+                    "internal static bool Prefix(int index, ref bool flag, ref",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.False();
+    }
+
+    [Test]
+    public static void ScaffoldedPrefixAndPostfixOmitResultForAVoidReturningTarget()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticVoidNoParams)
+        );
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(patches.Contains("internal static bool Prefix()", StringComparison.Ordinal))
+            .Is.True();
+        Assert
+            .That(patches.Contains("internal static void Postfix()", StringComparison.Ordinal))
+            .Is.True();
+        Assert.That(patches.Contains("__result", StringComparison.Ordinal)).Is.False();
+    }
+
+    [Test]
+    public static void ScaffoldedPrefixAndPostfixIncludeInstanceForAnInstanceTarget()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.InstanceNonVoid)
+        );
+        var declaringTypeName = typeof(SignatureFixtureMethods).FullName.Replace('+', '.');
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(
+                patches.Contains(
+                    $"internal static bool Prefix({declaringTypeName} __instance, string label)",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                patches.Contains(
+                    $"internal static void Postfix({declaringTypeName} __instance, string label, ref bool __result)",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void SuggestProjectNameReturnsDefaultWithoutATargetMethod() =>
+        Assert
+            .That(ProjectScaffolder.SuggestProjectName(null, null))
+            .Is.EqualTo(ProjectScaffolder.DefaultProjectName);
+
+    [Test]
+    public static void SuggestProjectNameReturnsDefaultWithoutATargetMethodEvenWithContext() =>
+        Assert
+            .That(ProjectScaffolder.SuggestProjectName(null, FixtureError()))
+            .Is.EqualTo(ProjectScaffolder.DefaultProjectName);
+
+    [Test]
+    public static void SuggestProjectNameIncludesTheSanitizedTypeAndMethodNameForAFrame()
+    {
+        var target = typeof(Short).GetMethod(nameof(Short.Go));
+
+        var name = ProjectScaffolder.SuggestProjectName(target, null);
+
+        Assert.That(name).Is.EqualTo("DebugAssistancePatch_Short_Go");
+    }
+
+    [Test]
+    public static void SuggestProjectNameNeverExceedsGenTextsFortyCharacterLimit()
+    {
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticVoidNoParams)
+        );
+
+        var name = ProjectScaffolder.SuggestProjectName(target, FixtureError());
+
+        Assert.That(name.Length <= 40).Is.True();
+        Assert.That(GenText.IsValidFilename(name)).Is.True();
+        Assert.That(name.EndsWith('_')).Is.False();
+    }
+
+    [Test]
+    public static void SuggestProjectNameAppendsTheShortErrorTypeNameWhenGivenAContext()
+    {
+        var target = typeof(Short).GetMethod(nameof(Short.Go));
+
+        var name = ProjectScaffolder.SuggestProjectName(target, FixtureErrorWithShortTypeName());
+
+        Assert.That(name).Is.EqualTo("DebugAssistancePatch_Short_Go_Foo");
+    }
+}

@@ -1,0 +1,38 @@
+[b]Debug Assistance[/b] adds a web-based Error Inspector and Hot Patch panel for finding, understanding, and fixing mod errors without restarting the game.
+
+[h1]Error Inspector[/h1]
+
+Open it from a new debug hotbar button, or by browsing to [i]http://localhost:3294[/i] (configurable in mod settings, along with an option to allow connections from other devices on your network). It shows a filterable, sortable list of captured errors with per-frame mod attribution, including which Harmony patches apply to each frame individually. You can save the current set of errors to a file, and load (merging or replacing) or delete a previously saved one. A toggle in the list header (also available in mod settings) pauses capture without closing the inspector.
+
+Each stack frame, and each Harmony patch applied to it, has an inline [b]Decompile[/b] action that decompiles that method on the spot with syntax highlighting and the crashing line highlighted and scrolled into view - including the actual merged prefix/postfix/transpiler replacement Harmony runs for a patched frame, so the highlighted line is correct even when the crash happened inside that replacement rather than the original method's own code. A [b]Decompile all[/b] button decompiles every frame and patch on an error at once in the background, with a progress bar.
+
+A light/dark/system theme picker in the top bar uses the Catppuccin Latte and Frappe color palettes.
+
+[h1]Hot Patch view[/h1]
+
+Load a Harmony patch assembly you've built yourself and apply it live, without restarting the game, with your currently active patches always visible in a sidebar: browse down through an Assembly -> Namespace -> Type -> Member picker (with a filter box, narrowing to only signature-compatible methods once a patch type and target are picked) to choose which of the assembly's methods is the Prefix, Postfix, Transpiler, or Finalizer, pick the target method from any currently loaded mod, apply it, and remove it again later. Reloading the same assembly after rebuilding it reports how many previously applied patches from that file were automatically removed first, and the view remembers the assembly path and scaffold project location you last used. A non-static patch method - the most common way to trip a cryptic 'Invalid IL code' error from Harmony - is rejected up front with a clear message; any other failure to apply reports the specific instruction Harmony choked on and is also logged so it shows up in the Error Inspector.
+
+[b]There is no sandboxing[/b] - a bug in an injected patch can crash or corrupt the game exactly like a bug in any other Harmony patch.
+
+A [b]Generate patch project[/b] button in the Hot Patch view creates a ready-to-build starter project (csproj, global usings, .gitignore, and a stub with one example method per patch type) in a location you pick, so you don't have to hand-assemble a project before writing a patch; when a target method is already picked, the stub's Prefix and Postfix already match that method's real parameters and return type instead of being generic placeholders.
+
+[h1]Requirements[/h1]
+[list]
+[*] [url=https://steamcommunity.com/workshop/filedetails/?id=2009463077]Harmony[/url]
+[*] [url=https://steamcommunity.com/workshop/filedetails/?id=3296362231]ilyvion's Laboratory[/url]
+[/list]
+
+[h1]Translations[/h1]
+[list]
+[*] [i]None yet[/i]
+[/list]
+Want your translation in this list? Release a translation mod (i.e. a mod with only a Languages folder, [i]not a copy of this entire mod + the translation[/i]) for this mod, and notify me of its existence, and I'll add it to the list.
+
+[h1]Source code[/h1]
+
+Source code can be found on [url=https://github.com/ilyvion/debug-assistance]GitHub[/url]. Report any bugs or feature suggestions/requests on the [url=https://github.com/ilyvion/debug-assistance/issues]issue tracker[/url].
+
+[h1]Like my work?[/h1]
+[url=https://ko-fi.com/ilyvion][img]https://alexanderschroeder.net/files/steam/kofi_brandasset/support_me_on_kofi_beige.png[/img][/url]
+
+Feel free to [url=https://discord.gg/J9Q78avHgM]join my Discord server[/url] if you want to talk to me (and other members) about my projects, or just to hang out, I guess. :)

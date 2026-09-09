@@ -1,3 +1,9 @@
 /Source/*/obj
 
 /**/Assemblies
+
+# Built by web/ (Vite) -- see web/vite.config.ts
+/Site
+
+web/node_modules/
+web/*.tsbuildinfo

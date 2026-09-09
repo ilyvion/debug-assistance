@@ -1,0 +1,45 @@
+{
+    "name": "debug-assistance-web",
+    "private": true,
+    "type": "module",
+    "engines": {
+        "node": "24.15.0"
+    },
+    "scripts": {
+        "prepare": "cd .. && husky web/.husky",
+        "dev": "vite",
+        "build": "vue-tsc --build && vite build",
+        "preview": "vite preview",
+        "test": "vitest run",
+        "typecheck": "vue-tsc --build --noEmit",
+        "lint": "eslint .",
+        "format": "prettier --write ."
+    },
+    "dependencies": {
+        "@catppuccin/palette": "^1.8.0",
+        "prismjs": "^1.30.0",
+        "vue": "^3.5.0",
+        "vue-router": "^4.6.4"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+        "@types/node": "^24.0.0",
+        "@types/prismjs": "^1.26.0",
+        "@vitejs/plugin-vue": "^6.0.0",
+        "@vue/eslint-config-prettier": "^10.2.0",
+        "@vue/test-utils": "^2.4.0",
+        "eslint": "^10.5.0",
+        "eslint-plugin-vue": "^10.0.0",
+        "globals": "^17.6.0",
+        "husky": "^9.1.7",
+        "jsdom": "^29.1.1",
+        "lint-staged": "^17.0.7",
+        "prettier": "^3.8.4",
+        "typescript": "^6.0.3",
+        "typescript-eslint": "^8.61.1",
+        "vite": "^8.1.5",
+        "vitest": "^4.1.10",
+        "vue-tsc": "^3.0.0"
+    }
+}

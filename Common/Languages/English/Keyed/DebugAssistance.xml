@@ -1,2 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LanguageData></LanguageData>
+<LanguageData>
+    <DebugAssistance.Inspector.OpenTooltip>Open the DebugAssistance error inspector in your web browser</DebugAssistance.Inspector.OpenTooltip>
+    <DebugAssistance.Inspector.OpenTooltipDisabled>The DebugAssistance error inspector's web server is disabled in mod settings.</DebugAssistance.Inspector.OpenTooltipDisabled>
+    <DebugAssistance.Decompile.NoFrameInfo>Not enough information was captured for this frame to decompile it.</DebugAssistance.Decompile.NoFrameInfo>
+    <DebugAssistance.Decompile.NotCurrentlyLoaded>Source not currently available: the mod assembly for this frame is not currently loaded.</DebugAssistance.Decompile.NotCurrentlyLoaded>
+    <DebugAssistance.Decompile.MethodNotFound>Could not find method '{0}' on type '{1}' in the currently loaded assembly. It may be a different version than when this error was captured.</DebugAssistance.Decompile.MethodNotFound>
+    <DebugAssistance.Decompile.Failed>Decompilation failed: {0}</DebugAssistance.Decompile.Failed>
+    <DebugAssistance.Decompile.NotPatched>This method is no longer Harmony-patched, so there is no patched version to decompile.</DebugAssistance.Decompile.NotPatched>
+    <DebugAssistance.Settings.ServerEnabled>Enable web server</DebugAssistance.Settings.ServerEnabled>
+    <DebugAssistance.Settings.Port>Port: </DebugAssistance.Settings.Port>
+    <DebugAssistance.Settings.RestartServer>Restart server (required to use a new port)</DebugAssistance.Settings.RestartServer>
+    <DebugAssistance.Settings.AiPromptGeneratorEnabled>Enable AI prompt buttons</DebugAssistance.Settings.AiPromptGeneratorEnabled>
+    <DebugAssistance.Settings.AiPromptGeneratorEnabledTooltip>Shows buttons in the error inspector and Hot Patch panel that copy a Markdown write-up of an error to your clipboard, for you to hand to an AI agent of your choice. This does not use AI itself - it only fills in a fixed template with the error's own details.</DebugAssistance.Settings.AiPromptGeneratorEnabledTooltip>
+    <DebugAssistance.Settings.AllowExternalConnections>Allow external connections</DebugAssistance.Settings.AllowExternalConnections>
+    <DebugAssistance.Settings.AllowExternalConnectionsTooltip>By default the web server only accepts connections from this machine, and rejects any request that reaches it from elsewhere. Enable this to also accept connections from other devices on your network, such as a phone or tablet.</DebugAssistance.Settings.AllowExternalConnectionsTooltip>
+    <DebugAssistance.Settings.MaxCapturedEntries>Max captured errors: </DebugAssistance.Settings.MaxCapturedEntries>
+    <DebugAssistance.Settings.ErrorCaptureEnabled>Capture errors</DebugAssistance.Settings.ErrorCaptureEnabled>
+    <DebugAssistance.Settings.ErrorCaptureEnabledTooltip>When disabled, new errors are not added to the captured list. Already-captured errors are left in place, and you can also toggle this from the error inspector's web UI.</DebugAssistance.Settings.ErrorCaptureEnabledTooltip>
+</LanguageData>
