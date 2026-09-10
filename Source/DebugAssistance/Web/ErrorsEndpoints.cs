@@ -92,13 +92,36 @@ internal static class ErrorsEndpoints
             Frames = [.. cause.Frames.Select(ToFrameJson)],
         };
 
-    internal static FrameDto ToFrameJson(CapturedStackFrame frame, int index) =>
-        new()
+    internal static FrameDto ToFrameJson(CapturedStackFrame frame, int index)
+    {
+        string? displayName = null;
+        BrowsedMethodDto? patchTarget = null;
+        if (
+            FrameDecompiler.TryResolveMethodForDecompile(
+                frame.Assembly,
+                frame.ResolvedAssemblyShortName,
+                frame.DeclaringTypeName,
+                frame.MethodName,
+                out var method,
+                out var assembly,
+                out _,
+                out _
+            )
+        )
+        {
+            displayName = CSharpTypeFormatter.DescribeMethod(method);
+            patchTarget = method.DeclaringType is { } declaringType
+                ? HotPatchEndpoints.ToDto(new BrowsedMethod(assembly, declaringType, method))
+                : null;
+        }
+
+        return new FrameDto
         {
             Index = index,
             RawText = frame.RawText,
             DeclaringTypeName = frame.DeclaringTypeName,
             MethodName = frame.MethodName,
+            DisplayName = displayName,
             FileName = frame.FileName,
             LineNumber = frame.LineNumber,
             ColumnNumber = frame.ColumnNumber,
@@ -106,26 +129,9 @@ internal static class ErrorsEndpoints
             ResolvedModName = frame.ResolvedModName,
             ResolvedAssemblyShortName = frame.ResolvedAssemblyShortName,
             Patches = [.. frame.Patches.Select(ToPatchJson)],
-            PatchTarget = ResolvePatchTarget(frame),
+            PatchTarget = patchTarget,
         };
-
-    // Reuses FrameDecompiler's own frame -> live MethodBase resolution (live reference -> resolved
-    // assembly short name -> type-name search) so a hot-patch target is offered whenever
-    // decompiling the frame would also succeed, and withheld under that same "not currently
-    // loaded"/unresolvable fallback rather than a separate resolution path of its own.
-    internal static BrowsedMethodDto? ResolvePatchTarget(CapturedStackFrame frame) =>
-        FrameDecompiler.TryResolveMethodForDecompile(
-            frame.Assembly,
-            frame.ResolvedAssemblyShortName,
-            frame.DeclaringTypeName,
-            frame.MethodName,
-            out var method,
-            out var assembly,
-            out _,
-            out _
-        ) && method.DeclaringType is { } declaringType
-            ? HotPatchEndpoints.ToDto(new BrowsedMethod(assembly, declaringType, method))
-            : null;
+    }
 
     internal static PatchDto ToPatchJson(CapturedPatchFrame patch, int index) =>
         new()
@@ -135,5 +141,8 @@ internal static class ErrorsEndpoints
             PatchKind = patch.PatchKind,
             DeclaringTypeName = patch.DeclaringTypeName,
             MethodName = patch.MethodName,
+            DisplayName = patch.Method is { } method
+                ? CSharpTypeFormatter.DescribeMethod(method)
+                : null,
         };
 }

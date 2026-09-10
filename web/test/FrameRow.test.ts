@@ -24,6 +24,7 @@ function frameWithPatches(): FrameInfo {
         rawText: 'Some.Type.Method',
         declaringTypeName: 'Some.Type',
         methodName: 'Method',
+        displayName: null,
         fileName: null,
         lineNumber: null,
         columnNumber: null,
@@ -38,6 +39,7 @@ function frameWithPatches(): FrameInfo {
                 patchKind: 'prefix',
                 declaringTypeName: 'Patch.A',
                 methodName: 'Prefix',
+                displayName: null,
             },
             {
                 index: 1,
@@ -45,6 +47,7 @@ function frameWithPatches(): FrameInfo {
                 patchKind: 'postfix',
                 declaringTypeName: 'Patch.B',
                 methodName: 'Postfix',
+                displayName: null,
             },
         ],
     };
@@ -216,6 +219,31 @@ describe('FrameRow', () => {
         const label = wrapper.find('.row-label');
         expect(label.text()).toContain('Some.Type.Method');
         expect(label.attributes('title')).not.toContain('Some.Type.Method');
+    });
+
+    // The backend only sets displayName when it resolved a live MethodBase for the frame, and
+    // reformats it as valid C# (e.g. a generic declaring type like
+    // "System.Collections.Generic.Dictionary<Thing, Blueprint_Install>" rather than
+    // declaringTypeName's own raw CLR-reflection text) -- prefer it over the raw join whenever
+    // it's present.
+    it('prefers the resolved display name over the raw declaring type and method name', () => {
+        const frame = {
+            ...frameWithPatches(),
+            declaringTypeName:
+                'System.Collections.Generic.Dictionary`2[[Verse.Thing]]',
+            methodName: 'TryInsert',
+            displayName:
+                'System.Collections.Generic.Dictionary<Thing, Blueprint_Install>.TryInsert',
+        };
+        const wrapper = mount(FrameRow, {
+            props: { dedupeKey: 'key', frame },
+        });
+
+        const label = wrapper.find('.row-label');
+        expect(label.text()).toContain(
+            'System.Collections.Generic.Dictionary<Thing, Blueprint_Install>.TryInsert',
+        );
+        expect(label.text()).not.toContain('Dictionary`2');
     });
 
     it('routes decompile requests to the cause-scoped endpoints when causeIndex is set', async () => {

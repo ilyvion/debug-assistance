@@ -59,6 +59,7 @@ function causeFrame(overrides: Partial<FrameInfo> = {}): FrameInfo {
         rawText: 'at Cause.Frame()',
         declaringTypeName: null,
         methodName: null,
+        displayName: null,
         fileName: null,
         lineNumber: null,
         columnNumber: null,

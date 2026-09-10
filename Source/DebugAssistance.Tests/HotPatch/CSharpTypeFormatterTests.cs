@@ -43,4 +43,16 @@ internal static class CSharpTypeFormatterTests
                 "DebugAssistance.Tests.HotPatch.CSharpTypeFormatterTests.GenericFixture<string>.DoTheThing"
             );
     }
+
+    // Regression coverage for a live stack overflow: a captured frame on
+    // List<T>.Enumerator.MoveNextRare (a struct nested in a generic collection type, reached
+    // through a Harmony-patched, dynamically-generated method) drove FormatType into unbounded
+    // recursion via its DeclaringType/generic-argument chain. This must terminate and produce
+    // something, even if the exact rendering of the mismatched open/closed generic argument isn't
+    // load-bearing.
+    [Test]
+    public static void FormatTypeTerminatesForANestedTypeOfAGenericCollection() =>
+        Assert
+            .That(CSharpTypeFormatter.FormatType(typeof(List<int>.Enumerator)).Length > 0)
+            .Is.True();
 }

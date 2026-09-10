@@ -15,6 +15,7 @@ export interface PatchInfo {
     patchKind: string;
     declaringTypeName: string | null;
     methodName: string | null;
+    displayName: string | null;
 }
 
 export interface FrameInfo {
@@ -22,6 +23,7 @@ export interface FrameInfo {
     rawText: string;
     declaringTypeName: string | null;
     methodName: string | null;
+    displayName: string | null;
     fileName: string | null;
     lineNumber: number | null;
     columnNumber: number | null;

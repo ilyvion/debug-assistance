@@ -160,7 +160,11 @@ defineExpose({ decompileAllForFrame, itemCount: () => panelItems().length });
 function fullyQualifiedName(
     declaringTypeName: string | null,
     methodName: string | null,
+    displayName: string | null,
 ): string {
+    if (displayName != null) {
+        return displayName;
+    }
     return declaringTypeName
         ? `${declaringTypeName}.${methodName ?? '?'}`
         : (methodName ?? '?');
@@ -168,7 +172,11 @@ function fullyQualifiedName(
 
 function frameLabel(frame: FrameInfo): string {
     return frame.declaringTypeName != null || frame.methodName != null
-        ? fullyQualifiedName(frame.declaringTypeName, frame.methodName)
+        ? fullyQualifiedName(
+              frame.declaringTypeName,
+              frame.methodName,
+              frame.displayName,
+          )
         : frame.rawText;
 }
 
@@ -184,7 +192,11 @@ function frameTooltip(frame: FrameInfo): string {
 
 function patchTooltip(patch: PatchInfo): string {
     return [
-        fullyQualifiedName(patch.declaringTypeName, patch.methodName),
+        fullyQualifiedName(
+            patch.declaringTypeName,
+            patch.methodName,
+            patch.displayName,
+        ),
         t('FrameRow.TooltipPatchOwner', patch.ownerModId),
         t('FrameRow.TooltipPatchKind', patch.patchKind),
     ].join('\n');

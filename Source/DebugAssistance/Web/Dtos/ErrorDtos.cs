@@ -32,6 +32,12 @@ internal sealed record PatchDto
     public required string PatchKind { get; init; }
     public string? DeclaringTypeName { get; init; }
     public string? MethodName { get; init; }
+
+    // "DeclaringTypeName.MethodName" rendered as valid, readable C# (via CSharpTypeFormatter)
+    // rather than DeclaringTypeName/MethodName's own raw CLR-reflection text — null under the same
+    // "no live MethodBase available" condition CapturedPatchFrame.Method itself is null under
+    // (reloaded from a save rather than captured live).
+    public string? DisplayName { get; init; }
 }
 
 internal sealed record FrameDto
@@ -40,6 +46,12 @@ internal sealed record FrameDto
     public required string RawText { get; init; }
     public string? DeclaringTypeName { get; init; }
     public string? MethodName { get; init; }
+
+    // "DeclaringTypeName.MethodName" rendered as valid, readable C# (via CSharpTypeFormatter)
+    // rather than DeclaringTypeName/MethodName's own raw CLR-reflection text — null under the same
+    // conditions decompiling this frame would fail under (unresolved reference, or a frame whose
+    // assembly isn't currently loaded).
+    public string? DisplayName { get; init; }
     public string? FileName { get; init; }
     public int? LineNumber { get; init; }
     public int? ColumnNumber { get; init; }

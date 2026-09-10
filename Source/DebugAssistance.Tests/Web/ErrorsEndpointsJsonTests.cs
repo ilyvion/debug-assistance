@@ -7,6 +7,13 @@ namespace DebugAssistance.Tests.Web;
 [TestSuite]
 internal static class ErrorsEndpointsJsonTests
 {
+    private sealed class GenericDisplayNameFixture<T>
+    {
+#pragma warning disable CA1822 // Mark members as static -- deliberately an instance method
+        public void DoTheThing() { }
+#pragma warning restore CA1822
+    }
+
     [Test]
     public static void ToListEntryJsonShapesTheErrorsOwnFieldsAndTheTopFramesModName()
     {
@@ -141,6 +148,34 @@ internal static class ErrorsEndpointsJsonTests
             );
     }
 
+    // Regression coverage for the same CLR-notation problem fb408e1/CSharpTypeFormatter fixed
+    // elsewhere: DeclaringTypeName (built from Type.FullName) is unreadable backtick/bracket
+    // notation for a generic declaring type, but a resolved frame's DisplayName goes through
+    // CSharpTypeFormatter instead and should come out as valid, readable C#.
+    [Test]
+    public static void ToFrameJsonDisplayNameRendersAGenericDeclaringTypeAsValidCSharp()
+    {
+        var declaringType = typeof(GenericDisplayNameFixture<string>);
+        var frame = new CapturedStackFrame(
+            "raw",
+            declaringTypeName: declaringType.FullName,
+            methodName: nameof(GenericDisplayNameFixture<>.DoTheThing),
+            fileName: null,
+            lineNumber: null
+        )
+        {
+            Assembly = declaringType.Assembly,
+        };
+
+        var dto = ErrorsEndpoints.ToFrameJson(frame, 0);
+
+        Assert
+            .That(dto.DisplayName)
+            .Is.EqualTo(
+                "DebugAssistance.Tests.Web.ErrorsEndpointsJsonTests.GenericDisplayNameFixture<string>.DoTheThing"
+            );
+    }
+
     [Test]
     public static void ToFrameJsonHasNoPatchTargetWhenTheFrameHasNoDeclaringTypeOrMethod()
     {
@@ -155,6 +190,7 @@ internal static class ErrorsEndpointsJsonTests
         var dto = ErrorsEndpoints.ToFrameJson(frame, 0);
 
         Assert.That(dto.PatchTarget is null).Is.True();
+        Assert.That(dto.DisplayName is null).Is.True();
     }
 
     // Mirrors FrameDecompilerTests' "not currently loaded" case: a frame loaded from a save whose
@@ -196,5 +232,28 @@ internal static class ErrorsEndpointsJsonTests
         Assert
             .That(dto.MethodName)
             .Is.EqualTo(nameof(ToPatchJsonShapesThePatchesOwnFieldsAndIncludesItsIndex));
+        Assert
+            .That(dto.DisplayName)
+            .Is.EqualTo(
+                $"{typeof(ErrorsEndpointsJsonTests).FullName}.{nameof(ToPatchJsonShapesThePatchesOwnFieldsAndIncludesItsIndex)}"
+            );
+    }
+
+    // Same generic-declaring-type regression as ToFrameJsonDisplayNameRendersAGenericDeclaringTypeAsValidCSharp,
+    // exercised through the patch (CapturedPatchFrame.Method) path instead of the frame-resolution one.
+    [Test]
+    public static void ToPatchJsonDisplayNameRendersAGenericDeclaringTypeAsValidCSharp()
+    {
+        var declaringType = typeof(GenericDisplayNameFixture<string>);
+        var patchMethod = declaringType.GetMethod(nameof(GenericDisplayNameFixture<>.DoTheThing));
+        var patch = new CapturedPatchFrame("SomeMod", "prefix", patchMethod);
+
+        var dto = ErrorsEndpoints.ToPatchJson(patch, 0);
+
+        Assert
+            .That(dto.DisplayName)
+            .Is.EqualTo(
+                "DebugAssistance.Tests.Web.ErrorsEndpointsJsonTests.GenericDisplayNameFixture<string>.DoTheThing"
+            );
     }
 }
