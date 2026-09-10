@@ -14,6 +14,14 @@ load (merging or replacing) or delete a previously saved one. A toggle in
 the list header (also available as a "Capture errors" checkbox in mod
 settings) pauses capture without closing the inspector - already-captured
 errors stay in place, and capture resumes as soon as you flip it back.
+Errors logged directly to Unity rather than through RimWorld's own logging
+(such as a texture dimension warning) aren't actionable from within this mod
+and are excluded from capture by default; an "Ignore Unity-only errors"
+setting lets you turn that back off.
+
+Each error's detail view shows its inner-exception chain, if it has one, from
+the root cause up to the exception that was actually thrown, each with its
+own raw stack trace you can expand and copy.
 
 Each stack frame, and each Harmony patch applied to it, has an inline
 **Decompile** action that decompiles that method on the spot with syntax

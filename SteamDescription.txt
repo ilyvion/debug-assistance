@@ -2,7 +2,9 @@
 
 [h1]Error Inspector[/h1]
 
-Open it from a new debug hotbar button, or by browsing to [i]http://localhost:3294[/i] (configurable in mod settings, along with an option to allow connections from other devices on your network). It shows a filterable, sortable list of captured errors with per-frame mod attribution, including which Harmony patches apply to each frame individually. You can save the current set of errors to a file, and load (merging or replacing) or delete a previously saved one. A toggle in the list header (also available in mod settings) pauses capture without closing the inspector.
+Open it from a new debug hotbar button, or by browsing to [i]http://localhost:3294[/i] (configurable in mod settings, along with an option to allow connections from other devices on your network). It shows a filterable, sortable list of captured errors with per-frame mod attribution, including which Harmony patches apply to each frame individually. You can save the current set of errors to a file, and load (merging or replacing) or delete a previously saved one. A toggle in the list header (also available in mod settings) pauses capture without closing the inspector. Errors logged directly to Unity rather than through RimWorld's own logging (such as a texture dimension warning) are excluded from capture by default; a setting lets you turn that back off.
+
+An error's detail view shows its inner-exception chain, if it has one, from the root cause up to the exception that was actually thrown, each with its own raw stack trace you can expand and copy.
 
 Each stack frame, and each Harmony patch applied to it, has an inline [b]Decompile[/b] action that decompiles that method on the spot with syntax highlighting and the crashing line highlighted and scrolled into view - including the actual merged prefix/postfix/transpiler replacement Harmony runs for a patched frame, so the highlighted line is correct even when the crash happened inside that replacement rather than the original method's own code. A [b]Decompile all[/b] button decompiles every frame and patch on an error at once in the background, with a progress bar.
 
