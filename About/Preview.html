@@ -1,0 +1,299 @@
+<title>Debug Assistance Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+/>
+<style>
+  :root {
+    --bg-page: #fff;
+    --void: #334a66;
+    --glow: #3a628a;
+    --panel: #20303f;
+    --panel-edge: #23343f;
+    --signal-hi: #95bee7;
+    --signal: #3a628a;
+    --flag: #ff9a4d;
+    --text-dim: #7aa5c3;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background: var(--bg-page);
+    margin: 0;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 40px 16px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  .stage {
+    width: min(640px, 100%);
+    aspect-ratio: 640 / 360;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(560px 420px at 16% 46%, var(--glow) 0%, transparent 62%),
+      linear-gradient(180deg, #283c50 0%, var(--void) 100%);
+    isolation: isolate;
+  }
+
+  /* faint dot grid */
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(
+      rgba(120, 150, 165, 0.14) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+    background-position: -4px -4px;
+    mask-image: radial-gradient(
+      560px 380px at 30% 50%,
+      black 10%,
+      transparent 75%
+    );
+    opacity: 0.55;
+  }
+
+  /* scanline sheen */
+  .stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.018) 0px,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  .frame {
+    position: absolute;
+    inset: 14px;
+    border: 1px solid rgba(120, 150, 170, 0.16);
+    border-radius: 6px;
+    pointer-events: none;
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 27% 73%;
+    align-items: center;
+    padding: 0 5.5% 0 5%;
+    gap: 4%;
+  }
+
+  .icon-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-panel {
+    width: 84%;
+    height: 84%;
+    border-radius: 20px;
+    background: linear-gradient(
+      155deg,
+      #28699c 0%,
+      var(--panel) 55%,
+      #1c2d3b 100%
+    );
+    border: 1px solid var(--panel-edge);
+    box-shadow:
+      0 18px 40px -18px rgba(0, 0, 0, 0.75),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-panel svg {
+    width: 66.6%;
+    height: 66.6%;
+    overflow: visible;
+  }
+
+  .bracket {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid var(--flag);
+    opacity: 0.9;
+  }
+  .bracket.tl {
+    top: -2px;
+    left: -2px;
+    border-right: none;
+    border-bottom: none;
+    border-radius: 4px 0 0 0;
+  }
+  .bracket.tr {
+    top: -2px;
+    right: -2px;
+    border-left: none;
+    border-bottom: none;
+    border-radius: 0 4px 0 0;
+  }
+  .bracket.bl {
+    bottom: -2px;
+    left: -2px;
+    border-right: none;
+    border-top: none;
+    border-radius: 0 0 0 4px;
+  }
+  .bracket.br {
+    bottom: -2px;
+    right: -2px;
+    border-left: none;
+    border-top: none;
+    border-radius: 0 0 4px 0;
+  }
+
+  .copy {
+    min-width: 0;
+  }
+
+  .title {
+    font-family: "RimWordFont";
+    font-weight: 700;
+    font-size: clamp(30px, 6.3vw, 50px);
+    /* line-height: 1.02; */
+    letter-spacing: 0.005em;
+    margin: 0;
+    text-wrap: balance;
+    background: linear-gradient(
+      180deg,
+      var(--signal-hi) 0%,
+      var(--signal-hi) 38%,
+      var(--signal) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 22px rgba(25, 51, 101, 0.25));
+
+    -webkit-text-stroke: 1.5px black;
+  }
+
+  .tagline {
+    margin-top: 10px;
+    font-family: "Source Code Pro";
+    font-size: clamp(11px, 1.85vw, 14.5px);
+    font-weight: 400;
+    color: var(--text-dim);
+    letter-spacing: 0.01em;
+    text-shadow: 1px 1px 2px #1c2d3b;
+  }
+
+  .tagline .accent {
+    color: var(--flag);
+  }
+</style>
+
+<div class="stage" id="stage">
+  <div class="frame"></div>
+  <div class="content">
+    <div class="icon-wrap">
+      <div class="icon-panel">
+        <svg
+          viewBox="0 0 100 100"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <!-- bug body -->
+          <g stroke="#95bee7" stroke-width="3.4" stroke-linecap="round">
+            <!-- antennae -->
+            <path d="M40 22 L32 12" />
+            <path d="M60 22 L68 12" />
+            <circle cx="32" cy="12" r="2.6" fill="#95bee7" stroke="none" />
+            <circle cx="68" cy="12" r="2.6" fill="#95bee7" stroke="none" />
+            <!-- legs left -->
+            <path d="M32 46 L18 40" />
+            <path d="M31 56 L15 56" />
+            <path d="M32 66 L18 72" />
+            <!-- legs right -->
+            <path d="M68 46 L82 40" />
+            <path d="M69 56 L85 56" />
+            <path d="M68 66 L82 72" />
+          </g>
+          <ellipse
+            cx="50"
+            cy="56"
+            rx="19"
+            ry="24"
+            fill="#1a2830"
+            stroke="#95bee7"
+            stroke-width="3.4"
+          />
+          <path
+            d="M50 34 C40 34 33 42 33 52 L67 52 C67 42 60 34 50 34 Z"
+            fill="#233642"
+            stroke="#95bee7"
+            stroke-width="3.4"
+          />
+          <line
+            x1="50"
+            y1="36"
+            x2="50"
+            y2="78"
+            stroke="#95bee7"
+            stroke-width="2.6"
+            opacity="0.55"
+          />
+
+          <!-- magnifier -->
+          <g transform="translate(4,4)">
+            <circle
+              cx="66"
+              cy="34"
+              r="20"
+              fill="rgba(9,13,18,0.35)"
+              stroke="#ff9a4d"
+              stroke-width="5"
+            />
+            <line
+              x1="80"
+              y1="48"
+              x2="96"
+              y2="64"
+              stroke="#ff9a4d"
+              stroke-width="6"
+              stroke-linecap="round"
+            />
+          </g>
+        </svg>
+      </div>
+      <span class="bracket tl"></span>
+      <span class="bracket tr"></span>
+      <span class="bracket bl"></span>
+      <span class="bracket br"></span>
+    </div>
+
+    <div class="copy">
+      <h1 class="title">Debug<br />Assistance</h1>
+      <div class="tagline">
+        find, inspect &amp; <span class="accent">hot‑patch</span> mod errors
+      </div>
+    </div>
+  </div>
+</div>
