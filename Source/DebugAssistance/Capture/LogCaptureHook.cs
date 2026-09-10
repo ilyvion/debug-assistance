@@ -17,12 +17,15 @@ internal static class LogCaptureHook
     internal static void Initialize(
         CaptureStore store,
         RawCaptureRingBuffer ringBuffer,
-        Func<bool>? captureEnabled = null
+        Func<bool>? captureEnabled = null,
+        Func<bool>? ignoreUnityOnlyErrors = null
     )
     {
         var enabled = captureEnabled ?? (() => DebugAssistanceMod.Settings.ErrorCaptureEnabled);
+        var ignoreUnityOnly =
+            ignoreUnityOnlyErrors ?? (() => DebugAssistanceMod.Settings.IgnoreUnityOnlyErrors);
         Application.logMessageReceivedThreaded += (condition, stackTrace, type) =>
-            Handle(store, ringBuffer, condition, stackTrace, type, enabled);
+            Handle(store, ringBuffer, condition, stackTrace, type, enabled, ignoreUnityOnly);
     }
 
     // ExtractStackTraceCapturePatch hands its live frame capture off here; CaptureFromLogMessage
@@ -145,7 +148,8 @@ internal static class LogCaptureHook
         string condition,
         string stackTrace,
         LogType type,
-        Func<bool>? captureEnabled = null
+        Func<bool>? captureEnabled = null,
+        Func<bool>? ignoreUnityOnlyErrors = null
     )
     {
         if (type is not (LogType.Error or LogType.Exception or LogType.Assert))
@@ -154,6 +158,15 @@ internal static class LogCaptureHook
         }
 
         if (type == LogType.Error && TryConsumeHandledByEnqueue(condition))
+        {
+            return;
+        }
+
+        // A LogType.Error reaching here was never routed through Verse.LogMessageQueue.Enqueue
+        // (RimWorld's Log.Error/Warning/Message pipeline always hits Enqueue, which marks its text
+        // consumed above) - so it's either a Unity-engine-internal message (e.g. an asset import
+        // warning) or a mod calling UnityEngine.Debug.LogError directly instead of Verse.Log.
+        if (type == LogType.Error && ignoreUnityOnlyErrors?.Invoke() != false)
         {
             return;
         }

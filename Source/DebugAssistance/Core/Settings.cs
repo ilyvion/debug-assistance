@@ -11,6 +11,7 @@ internal class Settings : ModSettings
     public bool AllowExternalConnections;
     public int MaxCapturedEntries = Constants.DefaultMaxCapturedEntries;
     public bool ErrorCaptureEnabled = true;
+    public bool IgnoreUnityOnlyErrors = true;
 
     private static string _portBuffer = DefaultPort.ToString(CultureInfo.InvariantCulture);
     private static string _maxCapturedEntriesBuffer = Constants.DefaultMaxCapturedEntries.ToString(
@@ -31,6 +32,7 @@ internal class Settings : ModSettings
         );
         // Scribe key kept as "exceptionCaptureEnabled" so existing players' saved preference carries over.
         Scribe_Values.Look(ref ErrorCaptureEnabled, "exceptionCaptureEnabled", true);
+        Scribe_Values.Look(ref IgnoreUnityOnlyErrors, "ignoreUnityOnlyErrors", true);
     }
 
     public static void DoSettingsWindowContents(Rect inRect)
@@ -114,6 +116,14 @@ internal class Settings : ModSettings
             "DebugAssistance.Settings.ErrorCaptureEnabled".Translate(),
             ref settings.ErrorCaptureEnabled,
             "DebugAssistance.Settings.ErrorCaptureEnabledTooltip".Translate()
+        );
+
+        listing.Gap();
+
+        listing.CheckboxLabeled(
+            "DebugAssistance.Settings.IgnoreUnityOnlyErrors".Translate(),
+            ref settings.IgnoreUnityOnlyErrors,
+            "DebugAssistance.Settings.IgnoreUnityOnlyErrorsTooltip".Translate()
         );
 
         listing.Gap();

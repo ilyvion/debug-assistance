@@ -302,7 +302,7 @@ internal static class LogCaptureHookTests
     }
 
     [Test]
-    public static void HandleStillCapturesAnErrorThatNeverWentThroughCaptureFromLogMessage()
+    public static void HandleStillCapturesAnUnenqueuedErrorWhenIgnoringUnityOnlyErrorsIsDisabled()
     {
         var store = new CaptureStore();
         var ringBuffer = new RawCaptureRingBuffer();
@@ -312,9 +312,31 @@ internal static class LogCaptureHookTests
             ringBuffer,
             "some other mod's raw Debug.LogError",
             "",
-            LogType.Error
+            LogType.Error,
+            ignoreUnityOnlyErrors: () => false
         );
 
         Assert.ThatCollection(store.Snapshot()).Has.Count(1);
+    }
+
+    // An Error that never went through Verse.LogMessageQueue.Enqueue (so never got marked handled
+    // above) never came from Verse.Log - either Unity itself logged it directly (e.g. its texture
+    // compression warning) or a mod called UnityEngine.Debug.LogError instead of Verse.Log. Both
+    // are filtered by default, since there's no legitimate reason for the latter.
+    [Test]
+    public static void IgnoresAnUnenqueuedErrorByDefault()
+    {
+        var store = new CaptureStore();
+        var ringBuffer = new RawCaptureRingBuffer();
+
+        LogCaptureHook.Handle(
+            store,
+            ringBuffer,
+            "Texture '' has dimensions (58 x 58) which are not multiples of 4. Compress will not work.",
+            "",
+            LogType.Error
+        );
+
+        Assert.ThatCollection(store.Snapshot()).Has.Count(0);
     }
 }
