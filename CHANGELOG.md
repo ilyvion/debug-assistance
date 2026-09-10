@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-10
+
 ### Added
 
 - An Error Inspector for browsing captured errors, with inline decompilation of stack frames and applied Harmony patches.
 - A Hot Patch view for hot-loading assemblies with patches and applying them live, without restarting the game, as well as a button to scaffold a ready-to-build patch project for a given target method.
 
 [Unreleased]: https://github.com/ilyvion/debug-assistance/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ilyvion/debug-assistance/releases/tag/v0.1.0
