@@ -13,6 +13,7 @@ internal sealed class CapturedError : IExposable
     private string _rawStackTrace;
 #pragma warning restore IDE0032
     private List<CapturedStackFrame> _frames = [];
+    private List<CapturedExceptionCause> _innerCauses = [];
     private int _occurrenceCount;
 
     // Stable across process restarts (unlike string.GetHashCode, which is randomized per-process)
@@ -29,6 +30,11 @@ internal sealed class CapturedError : IExposable
     public string Message => _message;
     public string RawStackTrace => _rawStackTrace;
     public IReadOnlyList<CapturedStackFrame> Frames => _frames;
+
+    // e.InnerException, e.InnerException.InnerException, etc. from the moment this error was
+    // captured live, outermost-inner-first. Empty when the exception had no InnerException, or the
+    // entry only ever reached us as parsed log text (no live Exception object to walk).
+    public IReadOnlyList<CapturedExceptionCause> InnerCauses => _innerCauses;
     public DateTime FirstSeen { get; private set; }
     public DateTime LastSeen { get; private set; }
     public int OccurrenceCount => _occurrenceCount;
@@ -45,17 +51,19 @@ internal sealed class CapturedError : IExposable
         string message,
         string rawStackTrace,
         IReadOnlyList<CapturedStackFrame> frames,
-        DateTime timestamp
+        DateTime timestamp,
+        IReadOnlyList<CapturedExceptionCause>? innerCauses = null
     )
     {
         _errorTypeName = errorTypeName;
         _message = message;
         _rawStackTrace = rawStackTrace;
         _frames = [.. frames];
+        _innerCauses = innerCauses is null ? [] : [.. innerCauses];
         FirstSeen = timestamp;
         LastSeen = timestamp;
         _occurrenceCount = 1;
-        _dedupeKey = ComputeDedupeKey(errorTypeName, message, rawStackTrace);
+        _dedupeKey = ComputeDedupeKey(errorTypeName, message, rawStackTrace, _innerCauses);
     }
 
 #pragma warning disable CS8618 // Only for scribing
@@ -88,15 +96,27 @@ internal sealed class CapturedError : IExposable
         _harmonyRefHash ??= other._harmonyRefHash;
     }
 
+    // innerCauses is folded into the hash so two entries whose outer wrapper is identical but
+    // whose actual root cause differs (e.g. two different mods' HarmonyException-wrapped
+    // TargetMethod() failures) don't dedupe into a single entry.
     internal static string ComputeDedupeKey(
         string errorTypeName,
         string message,
-        string rawStackTrace
+        string rawStackTrace,
+        IReadOnlyList<CapturedExceptionCause>? innerCauses = null
     )
     {
-        var bytes = Encoding.UTF8.GetBytes(
-            string.Join("\n", errorTypeName, message, rawStackTrace)
-        );
+        var parts = new List<string> { errorTypeName, message, rawStackTrace };
+        if (innerCauses is not null)
+        {
+            foreach (var cause in innerCauses)
+            {
+                parts.Add(cause.ErrorTypeName);
+                parts.Add(cause.Message);
+                parts.Add(cause.RawStackTrace);
+            }
+        }
+        var bytes = Encoding.UTF8.GetBytes(string.Join("\n", parts));
         using var sha256 = SHA256.Create();
         return BitConverter
             .ToString(sha256.ComputeHash(bytes))
@@ -110,6 +130,7 @@ internal sealed class CapturedError : IExposable
         Scribe_Values.Look(ref _message!, "message");
         Scribe_Values.Look(ref _rawStackTrace!, "rawStackTrace");
         Scribe_Collections.Look(ref _frames, "frames", LookMode.Deep);
+        Scribe_Collections.Look(ref _innerCauses, "innerCauses", LookMode.Deep);
 
         // Verse's ParseHelper has no built-in DateTime parser, so Scribe_Values.Look can't
         // round-trip a DateTime directly - scribe ticks instead (same pattern as
@@ -129,6 +150,7 @@ internal sealed class CapturedError : IExposable
         if (Scribe.mode == LoadSaveMode.LoadingVars)
         {
             _frames ??= [];
+            _innerCauses ??= [];
         }
     }
 }

@@ -198,7 +198,16 @@ internal static class LogCaptureHook
             raw.Message,
             raw.RawText,
             BuildFramesFromLiveCapture(raw.Frames, raw.RawText),
-            timestamp
+            timestamp,
+            [.. raw.InnerCauses.Select(BuildCauseFromRaw)]
+        );
+
+    private static CapturedExceptionCause BuildCauseFromRaw(RawExceptionCause raw) =>
+        new(
+            raw.ErrorTypeName,
+            raw.Message,
+            raw.RawText,
+            BuildFramesFromLiveCapture(raw.Frames, raw.RawText)
         );
 
     // raw.RawText is StackTrace.ToString(), which renders one line per frame in the same order as

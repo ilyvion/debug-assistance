@@ -1,7 +1,12 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { decompileFrame, decompilePatch } from '../src/api';
+import {
+    decompileCauseFrame,
+    decompileCausePatch,
+    decompileFrame,
+    decompilePatch,
+} from '../src/api';
 import CodePanel from '../src/components/CodePanel.vue';
 import FrameRow from '../src/components/FrameRow.vue';
 import type { BrowsedMethod, FrameInfo } from '../src/types';
@@ -9,6 +14,8 @@ import type { BrowsedMethod, FrameInfo } from '../src/types';
 vi.mock('../src/api', () => ({
     decompileFrame: vi.fn(),
     decompilePatch: vi.fn(),
+    decompileCauseFrame: vi.fn(),
+    decompileCausePatch: vi.fn(),
 }));
 
 function frameWithPatches(): FrameInfo {
@@ -209,6 +216,32 @@ describe('FrameRow', () => {
         const label = wrapper.find('.row-label');
         expect(label.text()).toContain('Some.Type.Method');
         expect(label.attributes('title')).not.toContain('Some.Type.Method');
+    });
+
+    it('routes decompile requests to the cause-scoped endpoints when causeIndex is set', async () => {
+        vi.mocked(decompileCauseFrame).mockResolvedValue({
+            code: 'original',
+            highlightLine: null,
+        });
+        vi.mocked(decompileCausePatch).mockResolvedValue({
+            code: 'patch',
+            highlightLine: null,
+        });
+
+        const wrapper = mount(FrameRow, {
+            props: {
+                dedupeKey: 'key',
+                frame: frameWithPatches(),
+                causeIndex: 2,
+            },
+        });
+
+        await wrapper.vm.decompileAllForFrame();
+
+        expect(decompileCauseFrame).toHaveBeenCalledWith('key', 2, 0, false);
+        expect(decompileCauseFrame).toHaveBeenCalledWith('key', 2, 0, true);
+        expect(decompileCausePatch).toHaveBeenCalledWith('key', 2, 0, 0);
+        expect(decompileCausePatch).toHaveBeenCalledWith('key', 2, 0, 1);
     });
 
     it('falls back to the raw stack trace text when the frame has no resolved name', () => {

@@ -28,11 +28,13 @@
     <DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptFailed>Could not copy the AI prompt: {0}</DebugAssistance.FrontEnd.ErrorDetail.CopyAiPromptFailed>
     <DebugAssistance.FrontEnd.ErrorDetail.DecompileAll>Decompile all</DebugAssistance.FrontEnd.ErrorDetail.DecompileAll>
     <DebugAssistance.FrontEnd.ErrorDetail.DecompilingAllProgress>Decompiling… ({0} / {1})</DebugAssistance.FrontEnd.ErrorDetail.DecompilingAllProgress>
-    <DebugAssistance.FrontEnd.ErrorDetail.ShowRawStackTrace>Show raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.ShowRawStackTrace>
-    <DebugAssistance.FrontEnd.ErrorDetail.HideRawStackTrace>Hide raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.HideRawStackTrace>
-    <DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTrace>Copy raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTrace>
-    <DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceCopied>Copied to clipboard.</DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceCopied>
-    <DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceFailed>Could not copy the stack trace: {0}</DebugAssistance.FrontEnd.ErrorDetail.CopyRawStackTraceFailed>
+    <DebugAssistance.FrontEnd.ErrorDetail.RootCause>Root cause: {0}</DebugAssistance.FrontEnd.ErrorDetail.RootCause>
+    <DebugAssistance.FrontEnd.ErrorDetail.CausedBy>Caused by: {0}</DebugAssistance.FrontEnd.ErrorDetail.CausedBy>
+    <DebugAssistance.FrontEnd.ErrorDetail.ShowStackTrace>Show raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.ShowStackTrace>
+    <DebugAssistance.FrontEnd.ErrorDetail.HideStackTrace>Hide raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.HideStackTrace>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyStackTrace>Copy raw stack trace</DebugAssistance.FrontEnd.ErrorDetail.CopyStackTrace>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyStackTraceCopied>Copied to clipboard.</DebugAssistance.FrontEnd.ErrorDetail.CopyStackTraceCopied>
+    <DebugAssistance.FrontEnd.ErrorDetail.CopyStackTraceFailed>Could not copy the stack trace: {0}</DebugAssistance.FrontEnd.ErrorDetail.CopyStackTraceFailed>
 
     <DebugAssistance.FrontEnd.FrameRow.Decompile>Decompile</DebugAssistance.FrontEnd.FrameRow.Decompile>
     <DebugAssistance.FrontEnd.FrameRow.DecompilePatched>Decompile patched</DebugAssistance.FrontEnd.FrameRow.DecompilePatched>

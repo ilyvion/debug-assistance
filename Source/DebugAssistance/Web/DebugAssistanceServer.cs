@@ -166,6 +166,31 @@ internal sealed class DebugAssistanceServer(
             ),
             ("errors", "frames", "patches", 8) when parts[7] == "decompile" =>
                 DecompileEndpoints.ServeDecompilePatch(ctx, parts[2], parts[4], parts[6]),
+            ("errors", "causes", "frames", 8) when parts[7] == "decompile" =>
+                DecompileEndpoints.ServeDecompileCauseFrame(
+                    ctx,
+                    parts[2],
+                    parts[4],
+                    parts[6],
+                    patched: false
+                ),
+            ("errors", "causes", "frames", 8) when parts[7] == "decompile-patched" =>
+                DecompileEndpoints.ServeDecompileCauseFrame(
+                    ctx,
+                    parts[2],
+                    parts[4],
+                    parts[6],
+                    patched: true
+                ),
+            ("errors", "causes", "frames", 10)
+                when parts[7] == "patches" && parts[9] == "decompile" =>
+                DecompileEndpoints.ServeDecompileCausePatch(
+                    ctx,
+                    parts[2],
+                    parts[4],
+                    parts[6],
+                    parts[8]
+                ),
             ("errors", "ai-prompt", null, 4) => PromptEndpoints.ServeAiPrompt(ctx, parts[2]),
             ("settings", null, null, 3) when parts[2] == "error-capture-enabled" =>
                 SettingsEndpoint.ServeSetErrorCaptureEnabled(ctx),

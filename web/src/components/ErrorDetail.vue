@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { fetchAiPrompt, fetchErrorDetail } from '../api';
 import { formatErrorTitle } from '../errorTitle';
@@ -40,6 +40,31 @@ const showRawTrace = ref(false);
 const rawTraceCopyError = ref<string | null>(null);
 const rawTraceCopied = ref(false);
 
+// detail.innerCauses is outermost-inner-first (index 0 is the wrapping exception's own
+// InnerException); reversed here so the root cause — the actionable one — is what's shown first.
+// originalIndex is preserved because the decompile/patch endpoints address a cause by its
+// position in detail.innerCauses, not its display position.
+const orderedCauses = computed(() =>
+    detail.value
+        ? detail.value.innerCauses
+              .map((cause, originalIndex) => ({ cause, originalIndex }))
+              .reverse()
+        : [],
+);
+const openCauseTraces = ref<Set<number>>(new Set());
+const causeTraceCopyError = ref<Map<number, string>>(new Map());
+const causeTraceCopied = ref<Set<number>>(new Set());
+
+function toggleCauseTrace(index: number) {
+    const next = new Set(openCauseTraces.value);
+    if (next.has(index)) {
+        next.delete(index);
+    } else {
+        next.add(index);
+    }
+    openCauseTraces.value = next;
+}
+
 async function load() {
     detail.value = null;
     loadError.value = null;
@@ -49,6 +74,9 @@ async function load() {
     showRawTrace.value = false;
     rawTraceCopyError.value = null;
     rawTraceCopied.value = false;
+    openCauseTraces.value = new Set();
+    causeTraceCopyError.value = new Map();
+    causeTraceCopied.value = new Set();
     try {
         detail.value = await fetchErrorDetail(props.dedupeKey);
     } catch (err) {
@@ -102,6 +130,24 @@ async function copyRawStackTrace() {
     } catch (err) {
         rawTraceCopyError.value =
             err instanceof Error ? err.message : String(err);
+    }
+}
+
+async function copyCauseStackTrace(index: number, rawStackTrace: string) {
+    const nextErrors = new Map(causeTraceCopyError.value);
+    nextErrors.delete(index);
+    causeTraceCopyError.value = nextErrors;
+    const nextCopied = new Set(causeTraceCopied.value);
+    nextCopied.delete(index);
+    causeTraceCopied.value = nextCopied;
+    try {
+        await navigator.clipboard.writeText(rawStackTrace);
+        causeTraceCopied.value = new Set(causeTraceCopied.value).add(index);
+    } catch (err) {
+        causeTraceCopyError.value = new Map(causeTraceCopyError.value).set(
+            index,
+            err instanceof Error ? err.message : String(err),
+        );
     }
 }
 
@@ -164,32 +210,105 @@ function formatDate(iso: string): string {
                 />
             </div>
 
-            <button
-                class="raw-trace-toggle"
-                @click="showRawTrace = !showRawTrace"
-            >
-                {{
-                    showRawTrace
-                        ? t('ErrorDetail.HideRawStackTrace')
-                        : t('ErrorDetail.ShowRawStackTrace')
-                }}
-            </button>
-            <div v-if="showRawTrace" class="raw-trace">
-                <button class="copy-raw-trace" @click="copyRawStackTrace">
-                    {{ t('ErrorDetail.CopyRawStackTrace') }}
-                </button>
-                <p v-if="rawTraceCopied" class="status">
-                    {{ t('ErrorDetail.CopyRawStackTraceCopied') }}
-                </p>
-                <p v-if="rawTraceCopyError" class="status error">
+            <div class="trace-actions raw-trace-actions">
+                <button
+                    class="raw-trace-toggle"
+                    @click="showRawTrace = !showRawTrace"
+                >
                     {{
-                        t(
-                            'ErrorDetail.CopyRawStackTraceFailed',
-                            rawTraceCopyError,
-                        )
+                        showRawTrace
+                            ? t('ErrorDetail.HideStackTrace')
+                            : t('ErrorDetail.ShowStackTrace')
                     }}
-                </p>
+                </button>
+                <button class="copy-raw-trace" @click="copyRawStackTrace">
+                    {{ t('ErrorDetail.CopyStackTrace') }}
+                </button>
+            </div>
+            <p v-if="rawTraceCopied" class="status">
+                {{ t('ErrorDetail.CopyStackTraceCopied') }}
+            </p>
+            <p v-if="rawTraceCopyError" class="status error">
+                {{ t('ErrorDetail.CopyStackTraceFailed', rawTraceCopyError) }}
+            </p>
+            <div v-if="showRawTrace" class="raw-trace">
                 <pre class="raw-trace-text">{{ detail.rawStackTrace }}</pre>
+            </div>
+
+            <div v-if="orderedCauses.length > 0" class="causes">
+                <div
+                    v-for="({ cause, originalIndex }, i) in orderedCauses"
+                    :key="originalIndex"
+                    class="cause"
+                >
+                    <h3 class="cause-title">
+                        {{
+                            i === 0
+                                ? t(
+                                      'ErrorDetail.RootCause',
+                                      formatErrorTitle(
+                                          cause.errorTypeName,
+                                          cause.message,
+                                      ),
+                                  )
+                                : t(
+                                      'ErrorDetail.CausedBy',
+                                      formatErrorTitle(
+                                          cause.errorTypeName,
+                                          cause.message,
+                                      ),
+                                  )
+                        }}
+                    </h3>
+
+                    <div v-if="cause.frames.length > 0" class="frames">
+                        <FrameRow
+                            v-for="frame in cause.frames"
+                            :key="frame.index"
+                            :dedupe-key="detail.dedupeKey"
+                            :frame="frame"
+                            :cause-index="originalIndex"
+                            @patch-this-method="
+                                emit('patch-this-method', $event, dedupeKey)
+                            "
+                        />
+                    </div>
+
+                    <div class="trace-actions cause-trace-actions">
+                        <button
+                            class="cause-trace-toggle"
+                            @click="toggleCauseTrace(i)"
+                        >
+                            {{
+                                openCauseTraces.has(i)
+                                    ? t('ErrorDetail.HideStackTrace')
+                                    : t('ErrorDetail.ShowStackTrace')
+                            }}
+                        </button>
+                        <button
+                            class="copy-cause-trace"
+                            @click="copyCauseStackTrace(i, cause.rawStackTrace)"
+                        >
+                            {{ t('ErrorDetail.CopyStackTrace') }}
+                        </button>
+                    </div>
+                    <p v-if="causeTraceCopied.has(i)" class="status">
+                        {{ t('ErrorDetail.CopyStackTraceCopied') }}
+                    </p>
+                    <p v-if="causeTraceCopyError.has(i)" class="status error">
+                        {{
+                            t(
+                                'ErrorDetail.CopyStackTraceFailed',
+                                causeTraceCopyError.get(i) ?? '',
+                            )
+                        }}
+                    </p>
+                    <div v-if="openCauseTraces.has(i)" class="cause-trace">
+                        <pre class="cause-trace-text">{{
+                            cause.rawStackTrace
+                        }}</pre>
+                    </div>
+                </div>
             </div>
 
             <template v-if="settings.aiPromptGeneratorEnabled">
@@ -256,16 +375,59 @@ function formatDate(iso: string): string {
     margin-top: 12px;
 }
 
-.raw-trace-toggle {
+.causes {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cause {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.cause-title {
+    margin: 0 0 4px;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.trace-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.trace-actions button {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.cause-trace-actions {
+    margin-top: 8px;
+}
+
+.cause-trace {
+    margin-top: 6px;
+}
+
+.cause-trace-text {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.raw-trace-actions {
     margin-top: 12px;
 }
 
 .raw-trace {
     margin-top: 8px;
-}
-
-.copy-raw-trace {
-    margin-bottom: 6px;
 }
 
 .raw-trace-text {

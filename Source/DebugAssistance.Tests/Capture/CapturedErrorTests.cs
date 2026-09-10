@@ -45,6 +45,54 @@ internal static class CapturedErrorTests
             .Is.Not.EqualTo(CapturedError.ComputeDedupeKey("System.Exception", "m", "trace two"));
 
     [Test]
+    public static void ComputeDedupeKeyDiffersOnInnerCauses()
+    {
+        var causeOne = new CapturedExceptionCause(
+            "System.NullReferenceException",
+            "cause one",
+            "at Foo.Bar()",
+            []
+        );
+        var causeTwo = new CapturedExceptionCause(
+            "System.InvalidOperationException",
+            "cause two",
+            "at Baz.Qux()",
+            []
+        );
+
+        Assert
+            .That(CapturedError.ComputeDedupeKey("System.Exception", "m", "t", [causeOne]))
+            .Is.Not.EqualTo(
+                CapturedError.ComputeDedupeKey("System.Exception", "m", "t", [causeTwo])
+            );
+        Assert
+            .That(CapturedError.ComputeDedupeKey("System.Exception", "m", "t"))
+            .Is.Not.EqualTo(
+                CapturedError.ComputeDedupeKey("System.Exception", "m", "t", [causeOne])
+            );
+    }
+
+    [Test]
+    public static void ComputeDedupeKeyTreatsNullAndEmptyInnerCausesTheSame() =>
+        Assert
+            .That(CapturedError.ComputeDedupeKey("System.Exception", "m", "t", null))
+            .Is.EqualTo(CapturedError.ComputeDedupeKey("System.Exception", "m", "t", []));
+
+    [Test]
+    public static void NewCapturedErrorHasNoInnerCausesByDefault()
+    {
+        var exception = new CapturedError(
+            "System.Exception",
+            "message",
+            "trace",
+            [],
+            DateTime.UtcNow
+        );
+
+        Assert.ThatCollection(exception.InnerCauses).Is.Empty();
+    }
+
+    [Test]
     public static void NewCapturedErrorStartsAtOccurrenceCountOneWithMatchingFirstAndLastSeen()
     {
         var timestamp = new DateTime(2026, 1, 1);

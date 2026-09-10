@@ -35,13 +35,28 @@ internal static class StackTraceCapturePatch
             return;
         }
 
+        var innerCauses = new List<RawExceptionCause>();
+        for (var inner = e.InnerException; inner is not null; inner = inner.InnerException)
+        {
+            var innerTrace = new StackTrace(inner, fNeedFileInfo: true);
+            innerCauses.Add(
+                new RawExceptionCause(
+                    inner.GetType().FullName ?? inner.GetType().Name,
+                    inner.Message,
+                    innerTrace.GetFrames() ?? [],
+                    innerTrace.ToString()
+                )
+            );
+        }
+
         _ringBuffer.Store(
             new RawCapture(
                 e.GetType().FullName ?? e.GetType().Name,
                 e.Message,
                 frames,
                 stackTrace.ToString(),
-                DateTime.UtcNow
+                DateTime.UtcNow,
+                innerCauses
             )
         );
     }

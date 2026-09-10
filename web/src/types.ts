@@ -32,6 +32,13 @@ export interface FrameInfo {
     patchTarget: BrowsedMethod | null;
 }
 
+export interface ErrorCause {
+    errorTypeName: string;
+    message: string;
+    rawStackTrace: string;
+    frames: FrameInfo[];
+}
+
 export interface ErrorDetail {
     dedupeKey: string;
     errorTypeName: string;
@@ -42,6 +49,7 @@ export interface ErrorDetail {
     lastSeen: string;
     harmonyRefHash: number | null;
     frames: FrameInfo[];
+    innerCauses: ErrorCause[];
 }
 
 export interface DecompileResult {

@@ -137,6 +137,7 @@ internal static class CapturedErrorExposeDataTests
         Assert.That(roundTripped.LastSeen).Is.EqualTo(original.LastSeen);
         Assert.That(roundTripped.OccurrenceCount).Is.EqualTo(original.OccurrenceCount);
         Assert.That(roundTripped.HarmonyRefHash).Is.EqualTo(original.HarmonyRefHash);
+        Assert.ThatCollection(roundTripped.InnerCauses).Is.Empty();
 
         Assert.ThatCollection(roundTripped.Frames).Has.Count(1);
         var roundTrippedFrame = roundTripped.Frames[0];
@@ -178,6 +179,51 @@ internal static class CapturedErrorExposeDataTests
         RoundTrip(saveHarness, loadHarness);
 
         Assert.ThatCollection(loadHarness.Errors).Is.Empty();
+    }
+
+    [Test]
+    public static void SaveThenLoadRoundTripsInnerCauses()
+    {
+        var causeFrame = new CapturedStackFrame(
+            "at Inner.Method() in Inner.cs:7",
+            "Inner",
+            "Method",
+            "Inner.cs",
+            7
+        );
+        var cause = new CapturedExceptionCause(
+            "System.Exception",
+            "the real error",
+            "at Inner.Method() in Inner.cs:7",
+            [causeFrame]
+        );
+        var original = new CapturedError(
+            "System.Reflection.TargetInvocationException",
+            "Exception has been thrown by the target of an invocation.",
+            "at Outer.Method()",
+            [],
+            new DateTime(2026, 1, 1),
+            [cause]
+        );
+
+        var saveHarness = new CaptureListHarness { Errors = [original] };
+        var loadHarness = new CaptureListHarness();
+
+        RoundTrip(saveHarness, loadHarness);
+
+        Assert.ThatCollection(loadHarness.Errors).Has.Count(1);
+        var roundTripped = loadHarness.Errors[0];
+        Assert.That(roundTripped.DedupeKey).Is.EqualTo(original.DedupeKey);
+        Assert.ThatCollection(roundTripped.InnerCauses).Has.Count(1);
+        var roundTrippedCause = roundTripped.InnerCauses[0];
+        Assert.That(roundTrippedCause.ErrorTypeName).Is.EqualTo(cause.ErrorTypeName);
+        Assert.That(roundTrippedCause.Message).Is.EqualTo(cause.Message);
+        Assert.That(roundTrippedCause.RawStackTrace).Is.EqualTo(cause.RawStackTrace);
+        Assert.ThatCollection(roundTrippedCause.Frames).Has.Count(1);
+        Assert.That(roundTrippedCause.Frames[0].RawText).Is.EqualTo(causeFrame.RawText);
+        Assert
+            .That(roundTrippedCause.Frames[0].DeclaringTypeName)
+            .Is.EqualTo(causeFrame.DeclaringTypeName!);
     }
 
     [Test]

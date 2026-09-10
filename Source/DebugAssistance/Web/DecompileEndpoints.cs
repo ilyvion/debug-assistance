@@ -6,7 +6,8 @@ namespace DebugAssistance.Web;
 
 // POST /api/errors/{dedupeKey}/frames/{frameIndex}/decompile[-patched] and
 // .../patches/{patchIndex}/decompile: on-demand decompilation of a captured frame or one of the
-// Harmony patches applied to it, via FrameDecompiler.
+// Harmony patches applied to it, via FrameDecompiler. The .../causes/{causeIndex}/frames/{...}
+// equivalents do the same for a frame belonging to one of the error's inner-exception causes.
 internal static class DecompileEndpoints
 {
     internal static bool ServeDecompileFrame(
@@ -47,6 +48,70 @@ internal static class DecompileEndpoints
             !ErrorRouteResolver.ResolveFrame(
                 DebugAssistanceServer.Entries(),
                 dedupeKey,
+                frameIndexPart,
+                out var frame,
+                out var notFound
+            )
+        )
+        {
+            return ctx.Response.WriteJsonError(404, notFound!);
+        }
+
+        if (
+            !int.TryParse(patchIndexPart, out var patchIndex)
+            || patchIndex < 0
+            || patchIndex >= frame!.Patches.Count
+        )
+        {
+            return ctx.Response.WriteJsonError(404, "Patch not found");
+        }
+
+        WriteDecompileResult(ctx, FrameDecompiler.Decompile(frame.Patches[patchIndex]));
+        return true;
+    }
+
+    internal static bool ServeDecompileCauseFrame(
+        HttpListenerContext ctx,
+        string dedupeKey,
+        string causeIndexPart,
+        string frameIndexPart,
+        bool patched
+    )
+    {
+        if (
+            !ErrorRouteResolver.ResolveCauseFrame(
+                DebugAssistanceServer.Entries(),
+                dedupeKey,
+                causeIndexPart,
+                frameIndexPart,
+                out var frame,
+                out var notFound
+            )
+        )
+        {
+            return ctx.Response.WriteJsonError(404, notFound!);
+        }
+
+        var result = patched
+            ? FrameDecompiler.DecompilePatched(frame!)
+            : FrameDecompiler.Decompile(frame!);
+        WriteDecompileResult(ctx, result);
+        return true;
+    }
+
+    internal static bool ServeDecompileCausePatch(
+        HttpListenerContext ctx,
+        string dedupeKey,
+        string causeIndexPart,
+        string frameIndexPart,
+        string patchIndexPart
+    )
+    {
+        if (
+            !ErrorRouteResolver.ResolveCauseFrame(
+                DebugAssistanceServer.Entries(),
+                dedupeKey,
+                causeIndexPart,
                 frameIndexPart,
                 out var frame,
                 out var notFound

@@ -76,6 +76,78 @@ internal static class LogCaptureHookTests
             .Is.False();
     }
 
+    // Mirrors StackTraceCapturePatch.Prefix's InnerException walk: builds a RawCapture for a
+    // TargetInvocationException wrapping a real InvalidOperationException, the same shape as
+    // Harmony's HarmonyException wrapping a failed TargetMethod() (see the reported real-world
+    // case this fixes).
+    private static (RawCapture Capture, string ConditionText) MakeCorrelatedCaptureWithInnerCause()
+    {
+        Exception outer;
+        StackTrace outerTrace;
+        Exception inner = null!;
+        StackTrace innerTrace = null!;
+        try
+        {
+            try
+            {
+                ThrowProbeException();
+                throw new InvalidOperationException("unreachable");
+            }
+            catch (InvalidOperationException innerEx)
+            {
+                inner = innerEx;
+                innerTrace = new StackTrace(innerEx, fNeedFileInfo: true);
+                throw new TargetInvocationException(innerEx);
+            }
+        }
+        catch (TargetInvocationException outerEx)
+        {
+            outer = outerEx;
+            outerTrace = new StackTrace(outerEx, fNeedFileInfo: true);
+        }
+
+        var rawText = outerTrace.ToString();
+        var capture = new RawCapture(
+            outer.GetType().FullName,
+            outer.Message,
+            outerTrace.GetFrames() ?? [],
+            rawText,
+            DateTime.UtcNow,
+            [
+                new RawExceptionCause(
+                    inner.GetType().FullName ?? inner.GetType().Name,
+                    inner.Message,
+                    innerTrace.GetFrames() ?? [],
+                    innerTrace.ToString()
+                ),
+            ]
+        );
+        var conditionText =
+            $"Exception ticking thing: {capture.ErrorTypeName}: {capture.Message}\n{rawText}";
+        return (capture, conditionText);
+    }
+
+    [Test]
+    public static void CarriesInnerCausesThroughFromARingBufferCorrelatedLiveCapture()
+    {
+        var (capture, conditionText) = MakeCorrelatedCaptureWithInnerCause();
+        var ringBuffer = new RawCaptureRingBuffer();
+        ringBuffer.Store(capture);
+        var store = new CaptureStore();
+
+        LogCaptureHook.Handle(store, ringBuffer, conditionText, "", LogType.Exception);
+
+        var snapshot = store.Snapshot();
+        Assert.ThatCollection(snapshot).Has.Count(1);
+        var result = snapshot[0];
+
+        Assert.ThatCollection(result.InnerCauses).Has.Count(1);
+        var cause = result.InnerCauses[0];
+        Assert.That(cause.ErrorTypeName).Is.EqualTo(capture.InnerCauses[0].ErrorTypeName);
+        Assert.That(cause.Message).Is.EqualTo(capture.InnerCauses[0].Message);
+        Assert.ThatCollection(cause.Frames).Has.Count(capture.InnerCauses[0].Frames.Length);
+    }
+
     [Test]
     public static void DoesNotCaptureWhenCaptureEnabledReturnsFalse()
     {

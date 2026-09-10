@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
 
-import { decompileFrame, decompilePatch } from '../api';
+import {
+    decompileCauseFrame,
+    decompileCausePatch,
+    decompileFrame,
+    decompilePatch,
+} from '../api';
 import { t } from '../translations';
 import type {
     BrowsedMethod,
@@ -14,9 +19,46 @@ import CodePanel from './CodePanel.vue';
 const props = defineProps<{
     dedupeKey: string;
     frame: FrameInfo;
+    // When set, this frame belongs to one of the error's inner-exception causes (index into
+    // ErrorDetail.innerCauses) rather than the error's own top-level frames, and decompile/patch
+    // requests are routed to that cause's own frame list instead.
+    causeIndex?: number;
 }>();
 
 const emit = defineEmits<{ 'patch-this-method': [BrowsedMethod] }>();
+
+function fetchOriginal(): Promise<DecompileResult> {
+    return props.causeIndex != null
+        ? decompileCauseFrame(
+              props.dedupeKey,
+              props.causeIndex,
+              props.frame.index,
+              false,
+          )
+        : decompileFrame(props.dedupeKey, props.frame.index, false);
+}
+
+function fetchPatched(): Promise<DecompileResult> {
+    return props.causeIndex != null
+        ? decompileCauseFrame(
+              props.dedupeKey,
+              props.causeIndex,
+              props.frame.index,
+              true,
+          )
+        : decompileFrame(props.dedupeKey, props.frame.index, true);
+}
+
+function fetchPatch(patchIndex: number): Promise<DecompileResult> {
+    return props.causeIndex != null
+        ? decompileCausePatch(
+              props.dedupeKey,
+              props.causeIndex,
+              props.frame.index,
+              patchIndex,
+          )
+        : decompilePatch(props.dedupeKey, props.frame.index, patchIndex);
+}
 
 function patchThisMethod() {
     if (props.frame.patchTarget) {
@@ -83,25 +125,14 @@ function panelItems(): {
     fetcher: () => Promise<DecompileResult>;
 }[] {
     const items: { key: PanelKey; fetcher: () => Promise<DecompileResult> }[] =
-        [
-            {
-                key: 'original',
-                fetcher: () =>
-                    decompileFrame(props.dedupeKey, props.frame.index, false),
-            },
-        ];
+        [{ key: 'original', fetcher: fetchOriginal }];
     if (props.frame.patches.length > 0) {
-        items.push({
-            key: 'patched',
-            fetcher: () =>
-                decompileFrame(props.dedupeKey, props.frame.index, true),
-        });
+        items.push({ key: 'patched', fetcher: fetchPatched });
     }
     for (const patch of props.frame.patches) {
         items.push({
             key: `patch-${patch.index}`,
-            fetcher: () =>
-                decompilePatch(props.dedupeKey, props.frame.index, patch.index),
+            fetcher: () => fetchPatch(patch.index),
         });
     }
     return items;
@@ -188,11 +219,7 @@ function subText(frame: FrameInfo): string | null {
             <div class="row-actions">
                 <button
                     :disabled="loadingPanels.has('original')"
-                    @click="
-                        toggle('original', () =>
-                            decompileFrame(dedupeKey, frame.index, false),
-                        )
-                    "
+                    @click="toggle('original', fetchOriginal)"
                 >
                     <span
                         v-if="loadingPanels.has('original')"
@@ -203,11 +230,7 @@ function subText(frame: FrameInfo): string | null {
                 <button
                     v-if="frame.patches.length > 0"
                     :disabled="loadingPanels.has('patched')"
-                    @click="
-                        toggle('patched', () =>
-                            decompileFrame(dedupeKey, frame.index, true),
-                        )
-                    "
+                    @click="toggle('patched', fetchPatched)"
                 >
                     <span v-if="loadingPanels.has('patched')" class="spinner" />
                     {{ toggleLabel('patched', true) }}
@@ -271,11 +294,7 @@ function subText(frame: FrameInfo): string | null {
                         :disabled="loadingPanels.has(`patch-${patch.index}`)"
                         @click="
                             toggle(`patch-${patch.index}`, () =>
-                                decompilePatch(
-                                    dedupeKey,
-                                    frame.index,
-                                    patch.index,
-                                ),
+                                fetchPatch(patch.index),
                             )
                         "
                     >

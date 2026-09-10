@@ -129,6 +129,29 @@ export async function decompilePatch(
     );
 }
 
+export async function decompileCauseFrame(
+    dedupeKey: string,
+    causeIndex: number,
+    frameIndex: number,
+    patched: boolean,
+): Promise<DecompileResult> {
+    const action = patched ? 'decompile-patched' : 'decompile';
+    return postForResult<DecompileResult>(
+        `/api/errors/${encodeURIComponent(dedupeKey)}/causes/${String(causeIndex)}/frames/${String(frameIndex)}/${action}`,
+    );
+}
+
+export async function decompileCausePatch(
+    dedupeKey: string,
+    causeIndex: number,
+    frameIndex: number,
+    patchIndex: number,
+): Promise<DecompileResult> {
+    return postForResult<DecompileResult>(
+        `/api/errors/${encodeURIComponent(dedupeKey)}/causes/${String(causeIndex)}/frames/${String(frameIndex)}/patches/${String(patchIndex)}/decompile`,
+    );
+}
+
 export async function fetchAiPrompt(dedupeKey: string): Promise<string> {
     const res = await fetch(
         `/api/errors/${encodeURIComponent(dedupeKey)}/ai-prompt`,

@@ -59,6 +59,7 @@ internal static class ErrorsEndpoints
                 LastSeen = error.LastSeen.ToIsoString(),
                 HarmonyRefHash = error.HarmonyRefHash,
                 Frames = [.. error.Frames.Select(ToFrameJson)],
+                InnerCauses = [.. error.InnerCauses.Select(ToCauseJson)],
             }
         );
         return true;
@@ -81,6 +82,15 @@ internal static class ErrorsEndpoints
         ctx.Response.WriteJson(new ClearErrorsResultDto { ClearedCount = clearedCount });
         return true;
     }
+
+    internal static ErrorCauseDto ToCauseJson(CapturedExceptionCause cause) =>
+        new()
+        {
+            ErrorTypeName = cause.ErrorTypeName,
+            Message = cause.Message,
+            RawStackTrace = cause.RawStackTrace,
+            Frames = [.. cause.Frames.Select(ToFrameJson)],
+        };
 
     internal static FrameDto ToFrameJson(CapturedStackFrame frame, int index) =>
         new()

@@ -65,4 +65,18 @@ internal sealed record ErrorDetailDto
     public required string LastSeen { get; init; }
     public int? HarmonyRefHash { get; init; }
     public required IReadOnlyList<FrameDto> Frames { get; init; }
+
+    // e.InnerException, e.InnerException.InnerException, etc., outermost-inner-first — e.g. the
+    // real System.Exception a HarmonyException wraps when a Harmony patch's TargetMethod() throws.
+    // Empty when the exception had no InnerException, or this entry only ever reached the mod as
+    // parsed log text.
+    public required IReadOnlyList<ErrorCauseDto> InnerCauses { get; init; }
+}
+
+internal sealed record ErrorCauseDto
+{
+    public required string ErrorTypeName { get; init; }
+    public required string Message { get; init; }
+    public required string RawStackTrace { get; init; }
+    public required IReadOnlyList<FrameDto> Frames { get; init; }
 }
