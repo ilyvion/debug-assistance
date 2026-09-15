@@ -192,11 +192,6 @@ function frameTooltip(frame: FrameInfo): string {
 
 function patchTooltip(patch: PatchInfo): string {
     return [
-        fullyQualifiedName(
-            patch.declaringTypeName,
-            patch.methodName,
-            patch.displayName,
-        ),
         t('FrameRow.TooltipPatchOwner', patch.ownerModId),
         t('FrameRow.TooltipPatchKind', patch.patchKind),
     ].join('\n');
@@ -298,7 +293,13 @@ function subText(frame: FrameInfo): string | null {
                         - {{ patch.patchKind.toUpperCase() }} [{{
                             patch.ownerModId
                         }}]
-                        {{ patch.methodName ?? '?' }}
+                        {{
+                            fullyQualifiedName(
+                                patch.declaringTypeName,
+                                patch.methodName,
+                                patch.displayName,
+                            )
+                        }}
                     </div>
                 </div>
                 <div class="row-actions">

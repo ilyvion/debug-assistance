@@ -221,6 +221,19 @@ describe('FrameRow', () => {
         expect(label.attributes('title')).not.toContain('Some.Type.Method');
     });
 
+    it('shows the fully qualified type and method name in each patch row label', () => {
+        const wrapper = mount(FrameRow, {
+            props: { dedupeKey: 'key', frame: frameWithPatches() },
+        });
+
+        const patchLabels = wrapper.findAll('.patch .row-label');
+        expect(patchLabels[0].text()).toContain('Patch.A.Prefix');
+        expect(patchLabels[0].attributes('title')).not.toContain(
+            'Patch.A.Prefix',
+        );
+        expect(patchLabels[1].text()).toContain('Patch.B.Postfix');
+    });
+
     // The backend only sets displayName when it resolved a live MethodBase for the frame, and
     // reformats it as valid C# (e.g. a generic declaring type like
     // "System.Collections.Generic.Dictionary<Thing, Blueprint_Install>" rather than
