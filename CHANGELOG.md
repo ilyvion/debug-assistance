@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A "Replace" patch type in the Hot Patch view, alongside Prefix/Postfix/Transpiler/Finalizer: pick a method from a loaded (e.g. rebuilt, bug-fixed) assembly with the same signature as a target method, and it runs completely in place of the target's own body — no need to hand-write a prefix that skips the original and copies out the result yourself.
 - Checkboxes on the Hot Patch view's active patches list, with a "Select all" toggle and a "Remove selected" button, so multiple patches can be removed together with a single confirmation instead of one at a time.
 
+### Changed
+
+- The Hot Patch view's active patches list is easier to scan when many patches are applied: each entry now shows a color-coded badge for the patch type, the target method as the prominent line, and the patch method/source assembly on a smaller line below it, with long names truncated (hover to see the full name) instead of wrapping across several lines.
+
 ### Fixed
 
 - In the Hot Patch view's "Patch method" browser, navigating back up to a type or namespace after changing the target method (or Prefix/Postfix/etc.) no longer shows the old, now-outdated list of compatible types and methods.

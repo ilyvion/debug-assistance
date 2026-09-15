@@ -334,6 +334,10 @@ function toggleSelectAllPatches() {
             : new Set(activePatches.value.map((patch) => patch.id));
 }
 
+function patchTypeClass(patchType: string): string {
+    return `patch-type-${patchType.toLowerCase()}`;
+}
+
 async function removeSelected() {
     try {
         await removeManyHotPatches([...selectedPatchIds.value]);
@@ -417,24 +421,36 @@ async function removeSelected() {
                                 <div class="active-list-row">
                                     <input
                                         type="checkbox"
+                                        class="patch-checkbox"
                                         :checked="
                                             selectedPatchIds.has(patch.id)
                                         "
                                         @change="togglePatchSelected(patch.id)"
                                     />
-                                    <span class="description">
-                                        {{ patch.patchType }}: [{{
-                                            patch.sourceAssemblyName
-                                        }}#{{ patch.sourceAssemblyGeneration }}]
-                                        {{ patch.patchMethodDescription }} →
-                                        {{ patch.targetDescription }}
-                                    </span>
                                     <button
                                         type="button"
+                                        class="remove-patch"
+                                        :title="t('HotPatch.Remove')"
                                         @click="pendingRemove = patch.id"
                                     >
-                                        {{ t('HotPatch.Remove') }}
+                                        🗑
                                     </button>
+                                    <span
+                                        class="patch-type-badge"
+                                        :class="patchTypeClass(patch.patchType)"
+                                        >{{ patch.patchType }}</span
+                                    >
+                                    <div class="target">
+                                        {{ patch.targetDescription }}
+                                    </div>
+                                    <div class="patch-summary-method">
+                                        {{ patch.patchMethodDescription }}
+                                    </div>
+                                    <div class="patch-summary-source">
+                                        {{ patch.sourceAssemblyName }}#{{
+                                            patch.sourceAssemblyGeneration
+                                        }}
+                                    </div>
                                 </div>
                                 <div
                                     v-if="pendingRemove === patch.id"
@@ -1015,16 +1031,90 @@ section h4 {
     border-top: none;
 }
 
+/* Grid rather than flex so the checkbox/Remove button occupy a narrow first
+column (stacked on their own rows) while the badge/target/method/source
+lines share the full remaining width on theirs. */
 .active-list-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 8px;
+    row-gap: 2px;
+    align-items: start;
 }
 
-.active-list .description {
+.patch-checkbox {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    margin-top: 3px;
+}
+
+.remove-patch {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+}
+
+.patch-type-badge {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: start;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--accent-text);
+    background: var(--ctp-overlay1);
+}
+
+.patch-type-badge.patch-type-prefix {
+    background: var(--ctp-blue);
+}
+
+.patch-type-badge.patch-type-postfix {
+    background: var(--ctp-green);
+}
+
+.patch-type-badge.patch-type-transpiler {
+    background: var(--ctp-mauve);
+}
+
+.patch-type-badge.patch-type-finalizer {
+    background: var(--ctp-peach);
+}
+
+.patch-type-badge.patch-type-replace {
+    background: var(--ctp-red);
+}
+
+.target,
+.patch-summary-method,
+.patch-summary-source {
+    grid-column: 2;
     overflow-wrap: anywhere;
+}
+
+.target {
     font-size: 13px;
+    font-weight: 600;
+}
+
+.patch-summary-method,
+.patch-summary-source {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.remove-patch {
+    background: transparent;
+    border: none;
+    padding: 4px 6px;
+    font-size: 12px;
+}
+
+.remove-patch:hover:not(:disabled) {
+    background: var(--bg-danger-hover);
 }
 
 .confirm {
