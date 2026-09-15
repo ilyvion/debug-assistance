@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - In the Hot Patch view's "Patch method" browser, navigating back up to a type or namespace after changing the target method (or Prefix/Postfix/etc.) no longer shows the old, now-outdated list of compatible types and methods.
+- Applying a hot patch after reloading the same patch assembly several times in a row no longer sometimes fails with "Unexpected null in ..." (or silently applies against a stale, previously-loaded version of your patch method).
 
 ## [0.1.0] - 2026-09-10
 
