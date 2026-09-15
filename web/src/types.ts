@@ -119,7 +119,7 @@ export interface MethodRef {
 }
 
 export type HarmonyPatchTypeName =
-    'Prefix' | 'Postfix' | 'Transpiler' | 'Finalizer';
+    'Prefix' | 'Postfix' | 'Transpiler' | 'Finalizer' | 'Replace';
 
 // Narrows the patch-method picker to methods PatchCompatibility.IsCompatible accepts for a given
 // target method + patch type.

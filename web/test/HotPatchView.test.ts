@@ -337,6 +337,26 @@ describe('HotPatchView', () => {
         );
     });
 
+    it('offers Replace as a patch type and shows its warning only when selected', async () => {
+        const wrapper = await mountPanel();
+        await loadAssembly(wrapper);
+
+        const select = wrapper.find('.patch-type-label select');
+        const optionValues = select
+            .findAll('option')
+            .map((option) => option.attributes('value'));
+        expect(optionValues).toContain('Replace');
+        expect(wrapper.find('.patch-method-section .warning').exists()).toBe(
+            false,
+        );
+
+        await select.setValue('Replace');
+
+        expect(wrapper.find('.patch-method-section .warning').text()).toBe(
+            'HotPatch.ReplaceWarning',
+        );
+    });
+
     it('drives Change on the patch-method picker when the patch type changes with a method selected', async () => {
         const wrapper = await mountPanel();
         await loadAssembly(wrapper);

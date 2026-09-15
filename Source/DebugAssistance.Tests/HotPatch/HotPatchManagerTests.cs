@@ -32,7 +32,7 @@ internal static class HotPatchManagerTests
         var (patch, error) = manager.Apply(
             target,
             patchMethod,
-            HarmonyPatchType.Prefix,
+            OnTheFlyPatchType.Prefix,
             "fixture.dll",
             1
         );
@@ -69,14 +69,14 @@ internal static class HotPatchManagerTests
         var (patchA, errorA) = manager.Apply(
             target,
             AccessTools.Method(typeof(HotPatchManagerTests), nameof(LoggingPostfixA)),
-            HarmonyPatchType.Postfix,
+            OnTheFlyPatchType.Postfix,
             "fixture.dll",
             1
         );
         var (patchB, errorB) = manager.Apply(
             target,
             AccessTools.Method(typeof(HotPatchManagerTests), nameof(LoggingPostfixB)),
-            HarmonyPatchType.Postfix,
+            OnTheFlyPatchType.Postfix,
             "fixture.dll",
             1
         );
@@ -121,7 +121,7 @@ internal static class HotPatchManagerTests
         var (patch, error) = manager.Apply(
             target,
             patchMethod,
-            HarmonyPatchType.Postfix,
+            OnTheFlyPatchType.Postfix,
             "fixture.dll",
             1
         );
@@ -155,7 +155,7 @@ internal static class HotPatchManagerTests
         var (patch, error) = manager.Apply(
             target,
             patchMethod,
-            HarmonyPatchType.Prefix,
+            OnTheFlyPatchType.Prefix,
             "fixture.dll",
             1
         );
@@ -166,6 +166,155 @@ internal static class HotPatchManagerTests
             .Is.True();
         Assert.ThatCollection(manager.ActivePatches).Is.Empty();
         Assert.That(PrefixTarget(5)).Is.EqualTo(6);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int ReplaceStaticTarget(int value) => value + 1;
+
+#pragma warning disable IDE0051 // Used as a Harmony patch method, invoked by reflection
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int ReplaceStaticReplacement(int value) => value * 2;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int ReplaceMismatchedReplacement(int value, int extra) => value + extra;
+#pragma warning restore IDE0051
+
+    [Test]
+    public static void ApplyingAReplaceOnAStaticMethodCallsTheReplacementInsteadAndRemovingItReverts()
+    {
+        var manager = new HotPatchManager(
+            "test.debugassistance.hotpatchmanagertests.replacestatic"
+        );
+        var target = AccessTools.Method(typeof(HotPatchManagerTests), nameof(ReplaceStaticTarget));
+        var replacement = AccessTools.Method(
+            typeof(HotPatchManagerTests),
+            nameof(ReplaceStaticReplacement)
+        );
+
+        var (patch, error) = manager.Apply(
+            target,
+            replacement,
+            OnTheFlyPatchType.Replace,
+            "fixture.dll",
+            1
+        );
+
+        Assert.That(error is null).Is.True();
+        Assert.That(ReplaceStaticTarget(5)).Is.EqualTo(10);
+
+        Assert.That(manager.Remove(patch!)).Is.True();
+        Assert.That(ReplaceStaticTarget(5)).Is.EqualTo(6);
+    }
+
+    [Test]
+    public static void ApplyingAReplaceWithAMismatchedSignatureReturnsAnErrorInsteadOfThrowing()
+    {
+        var manager = new HotPatchManager(
+            "test.debugassistance.hotpatchmanagertests.replacemismatch"
+        );
+        var target = AccessTools.Method(typeof(HotPatchManagerTests), nameof(ReplaceStaticTarget));
+        var replacement = AccessTools.Method(
+            typeof(HotPatchManagerTests),
+            nameof(ReplaceMismatchedReplacement)
+        );
+
+        var (patch, error) = manager.Apply(
+            target,
+            replacement,
+            OnTheFlyPatchType.Replace,
+            "fixture.dll",
+            1
+        );
+
+        Assert.That(patch is null).Is.True();
+        Assert.That(string.IsNullOrEmpty(error)).Is.False();
+        Assert.ThatCollection(manager.ActivePatches).Is.Empty();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ReplaceRefTarget(ref int value) => value += 1;
+
+#pragma warning disable IDE0051 // Used as a Harmony patch method, invoked by reflection
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ReplaceRefReplacement(ref int value) => value *= 2;
+#pragma warning restore IDE0051
+
+    [Test]
+    public static void ApplyingAReplaceForwardsRefParametersToTheReplacement()
+    {
+        var manager = new HotPatchManager("test.debugassistance.hotpatchmanagertests.replaceref");
+        var target = AccessTools.Method(typeof(HotPatchManagerTests), nameof(ReplaceRefTarget));
+        var replacement = AccessTools.Method(
+            typeof(HotPatchManagerTests),
+            nameof(ReplaceRefReplacement)
+        );
+
+        var (patch, error) = manager.Apply(
+            target,
+            replacement,
+            OnTheFlyPatchType.Replace,
+            "fixture.dll",
+            1
+        );
+
+        Assert.That(error is null).Is.True();
+        var value = 5;
+        ReplaceRefTarget(ref value);
+        Assert.That(value).Is.EqualTo(10);
+
+        _ = manager.Remove(patch!);
+    }
+
+    // Simulates the feature's real motivating scenario: a target instance method and a
+    // "replacement" instance method declared on two entirely distinct (but layout-identical)
+    // types, standing in for a target's original type and the reloaded fixed assembly's own
+    // (necessarily distinct, per LiveAssemblyLoader) copy of that type. Proves the replacement's
+    // body actually runs against the *original* type's live instance.
+    private sealed class ReplaceOriginalInstanceType
+    {
+        public int Field = 10;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public int Compute(int value) => value + Field;
+    }
+
+    private sealed class ReplaceReplacementInstanceType
+    {
+        public int Field = 10;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public int Compute(int value) => value * Field;
+    }
+
+    [Test]
+    public static void ApplyingAReplaceOnAnInstanceMethodRunsTheReplacementAgainstTheOriginalInstance()
+    {
+        var manager = new HotPatchManager(
+            "test.debugassistance.hotpatchmanagertests.replaceinstance"
+        );
+        var target = AccessTools.Method(
+            typeof(ReplaceOriginalInstanceType),
+            nameof(ReplaceOriginalInstanceType.Compute)
+        );
+        var replacement = AccessTools.Method(
+            typeof(ReplaceReplacementInstanceType),
+            nameof(ReplaceReplacementInstanceType.Compute)
+        );
+
+        var (patch, error) = manager.Apply(
+            target,
+            replacement,
+            OnTheFlyPatchType.Replace,
+            "fixture.dll",
+            1
+        );
+
+        Assert.That(error is null).Is.True();
+        var instance = new ReplaceOriginalInstanceType();
+        Assert.That(instance.Compute(4)).Is.EqualTo(40);
+
+        Assert.That(manager.Remove(patch!)).Is.True();
+        Assert.That(instance.Compute(4)).Is.EqualTo(14);
     }
 
     [Test]
@@ -259,14 +408,14 @@ internal static class HotPatchManagerTests
         var (fromThisAssembly, errorA) = manager.Apply(
             AccessTools.Method(typeof(HotPatchManagerTests), nameof(ReloadTargetA)),
             thisAssemblyPatchMethod,
-            HarmonyPatchType.Postfix,
+            OnTheFlyPatchType.Postfix,
             "this-assembly.dll",
             1
         );
         var (fromOtherAssembly, errorB) = manager.Apply(
             AccessTools.Method(typeof(HotPatchManagerTests), nameof(ReloadTargetB)),
             otherAssemblyPatchMethod,
-            HarmonyPatchType.Postfix,
+            OnTheFlyPatchType.Postfix,
             "other-assembly.dll",
             1
         );

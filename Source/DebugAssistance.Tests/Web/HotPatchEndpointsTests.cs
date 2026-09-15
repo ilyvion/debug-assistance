@@ -249,18 +249,21 @@ internal static class HotPatchEndpointsTests
     public static void TryParsePatchTypeParsesEachSupportedName()
     {
         Assert.That(HotPatchEndpoints.TryParsePatchType("Prefix", out var prefix)).Is.True();
-        Assert.That(prefix).Is.EqualTo(HarmonyPatchType.Prefix);
+        Assert.That(prefix).Is.EqualTo(OnTheFlyPatchType.Prefix);
 
         Assert.That(HotPatchEndpoints.TryParsePatchType("Postfix", out var postfix)).Is.True();
-        Assert.That(postfix).Is.EqualTo(HarmonyPatchType.Postfix);
+        Assert.That(postfix).Is.EqualTo(OnTheFlyPatchType.Postfix);
 
         Assert
             .That(HotPatchEndpoints.TryParsePatchType("Transpiler", out var transpiler))
             .Is.True();
-        Assert.That(transpiler).Is.EqualTo(HarmonyPatchType.Transpiler);
+        Assert.That(transpiler).Is.EqualTo(OnTheFlyPatchType.Transpiler);
 
         Assert.That(HotPatchEndpoints.TryParsePatchType("Finalizer", out var finalizer)).Is.True();
-        Assert.That(finalizer).Is.EqualTo(HarmonyPatchType.Finalizer);
+        Assert.That(finalizer).Is.EqualTo(OnTheFlyPatchType.Finalizer);
+
+        Assert.That(HotPatchEndpoints.TryParsePatchType("Replace", out var replace)).Is.True();
+        Assert.That(replace).Is.EqualTo(OnTheFlyPatchType.Replace);
     }
 
     [Test]
@@ -305,7 +308,8 @@ internal static class HotPatchEndpointsTests
         var patch = OnTheFlyPatch.Create(
             target,
             patchMethod,
-            HarmonyPatchType.Postfix,
+            patchMethod,
+            OnTheFlyPatchType.Postfix,
             "fixture.dll",
             2
         );
@@ -343,7 +347,7 @@ internal static class HotPatchEndpointsTests
 
         Assert.That(resolved is not null).Is.True();
         Assert.That(resolved!.Value.Target == target).Is.True();
-        Assert.That(resolved.Value.PatchType).Is.EqualTo(HarmonyPatchType.Postfix);
+        Assert.That(resolved.Value.PatchType).Is.EqualTo(OnTheFlyPatchType.Postfix);
     }
 
     [Test]
@@ -430,7 +434,7 @@ internal static class HotPatchEndpointsTests
         var count = HotPatchEndpoints.CountMethods(
             assembly,
             type,
-            (target, HarmonyPatchType.Prefix)
+            (target, OnTheFlyPatchType.Prefix)
         );
 
         Assert.That(count).Is.EqualTo(1);
@@ -448,7 +452,7 @@ internal static class HotPatchEndpointsTests
                 HotPatchEndpoints.HasCompatibleMethod(
                     assembly,
                     incompatibleType,
-                    (target, HarmonyPatchType.Prefix)
+                    (target, OnTheFlyPatchType.Prefix)
                 )
             )
             .Is.False();
@@ -466,7 +470,7 @@ internal static class HotPatchEndpointsTests
                 HotPatchEndpoints.HasCompatibleMethod(
                     assembly,
                     mixedType,
-                    (target, HarmonyPatchType.Prefix)
+                    (target, OnTheFlyPatchType.Prefix)
                 )
             )
             .Is.True();
@@ -499,7 +503,7 @@ internal static class HotPatchEndpointsTests
 
         var count = HotPatchEndpoints.CountCompatibleTypes(
             assembly,
-            (target, HarmonyPatchType.Prefix)
+            (target, OnTheFlyPatchType.Prefix)
         );
 
         Assert.That(count).Is.EqualTo(1);
@@ -513,7 +517,8 @@ internal static class HotPatchEndpointsTests
         var patch = OnTheFlyPatch.Create(
             target,
             patchMethod,
-            HarmonyPatchType.Prefix,
+            patchMethod,
+            OnTheFlyPatchType.Prefix,
             "fixture.dll",
             1
         );

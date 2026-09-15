@@ -27,14 +27,16 @@ internal static class OnTheFlyPatchTests
         var patch = OnTheFlyPatch.Create(
             target,
             patchMethod,
-            HarmonyPatchType.Prefix,
+            patchMethod,
+            OnTheFlyPatchType.Prefix,
             "/some/path/Patches.dll",
             3
         );
 
         Assert.That(patch.Target.Name).Is.EqualTo(target.Name);
         Assert.That(patch.PatchMethod.Name).Is.EqualTo(patchMethod.Name);
-        Assert.That(patch.PatchType).Is.EqualTo(HarmonyPatchType.Prefix);
+        Assert.That(patch.AppliedMethod.Name).Is.EqualTo(patchMethod.Name);
+        Assert.That(patch.PatchType).Is.EqualTo(OnTheFlyPatchType.Prefix);
         Assert.That(patch.SourceAssemblyPath).Is.EqualTo("/some/path/Patches.dll");
         Assert.That(patch.SourceAssemblyGeneration).Is.EqualTo(3);
     }
@@ -51,8 +53,22 @@ internal static class OnTheFlyPatchTests
             BindingFlags.NonPublic | BindingFlags.Static
         );
 
-        var first = OnTheFlyPatch.Create(target, patchMethod, HarmonyPatchType.Prefix, "path", 1);
-        var second = OnTheFlyPatch.Create(target, patchMethod, HarmonyPatchType.Prefix, "path", 1);
+        var first = OnTheFlyPatch.Create(
+            target,
+            patchMethod,
+            patchMethod,
+            OnTheFlyPatchType.Prefix,
+            "path",
+            1
+        );
+        var second = OnTheFlyPatch.Create(
+            target,
+            patchMethod,
+            patchMethod,
+            OnTheFlyPatchType.Prefix,
+            "path",
+            1
+        );
 
         Assert.That(first.Id.Equals(second.Id)).Is.False();
     }

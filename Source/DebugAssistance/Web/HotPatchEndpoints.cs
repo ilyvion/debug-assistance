@@ -169,7 +169,7 @@ internal static class HotPatchEndpoints
     // (targetAssemblyFullName/targetMetadataToken/patchType all present and resolvable). Missing
     // or malformed values fall back to no filtering rather than an error response, since the
     // patch-method picker can legitimately be browsed before a target method is chosen.
-    internal static (MethodBase Target, HarmonyPatchType PatchType)? ResolveCompatibilityFilter(
+    internal static (MethodBase Target, OnTheFlyPatchType PatchType)? ResolveCompatibilityFilter(
         NameValueCollection query
     )
     {
@@ -194,7 +194,7 @@ internal static class HotPatchEndpoints
 
     private static bool IsCompatible(
         BrowsedMethod method,
-        (MethodBase Target, HarmonyPatchType PatchType) compatibleWith
+        (MethodBase Target, OnTheFlyPatchType PatchType) compatibleWith
     ) =>
         PatchCompatibility.IsCompatible(
             compatibleWith.Target,
@@ -210,7 +210,7 @@ internal static class HotPatchEndpoints
     internal static int CountMethods(
         Assembly assembly,
         Type type,
-        (MethodBase Target, HarmonyPatchType PatchType)? compatibleWith
+        (MethodBase Target, OnTheFlyPatchType PatchType)? compatibleWith
     )
     {
         var methods = MethodBrowser.BrowseMethods(assembly, type);
@@ -225,12 +225,12 @@ internal static class HotPatchEndpoints
     internal static bool HasCompatibleMethod(
         Assembly assembly,
         Type type,
-        (MethodBase Target, HarmonyPatchType PatchType)? compatibleWith
+        (MethodBase Target, OnTheFlyPatchType PatchType)? compatibleWith
     ) => CountMethods(assembly, type, compatibleWith) > 0;
 
     internal static int CountCompatibleTypes(
         Assembly assembly,
-        (MethodBase Target, HarmonyPatchType PatchType)? compatibleWith
+        (MethodBase Target, OnTheFlyPatchType PatchType)? compatibleWith
     ) =>
         MethodBrowser
             .GetLoadableTypes(assembly)
@@ -374,7 +374,7 @@ internal static class HotPatchEndpoints
         {
             return ctx.Response.WriteJsonError(
                 400,
-                "patchType must be one of Prefix, Postfix, Transpiler, Finalizer"
+                "patchType must be one of Prefix, Postfix, Transpiler, Finalizer, Replace"
             );
         }
 
@@ -522,21 +522,24 @@ internal static class HotPatchEndpoints
         return true;
     }
 
-    internal static bool TryParsePatchType(string? value, out HarmonyPatchType patchType)
+    internal static bool TryParsePatchType(string? value, out OnTheFlyPatchType patchType)
     {
         switch (value)
         {
-            case nameof(HarmonyPatchType.Prefix):
-                patchType = HarmonyPatchType.Prefix;
+            case nameof(OnTheFlyPatchType.Prefix):
+                patchType = OnTheFlyPatchType.Prefix;
                 return true;
-            case nameof(HarmonyPatchType.Postfix):
-                patchType = HarmonyPatchType.Postfix;
+            case nameof(OnTheFlyPatchType.Postfix):
+                patchType = OnTheFlyPatchType.Postfix;
                 return true;
-            case nameof(HarmonyPatchType.Transpiler):
-                patchType = HarmonyPatchType.Transpiler;
+            case nameof(OnTheFlyPatchType.Transpiler):
+                patchType = OnTheFlyPatchType.Transpiler;
                 return true;
-            case nameof(HarmonyPatchType.Finalizer):
-                patchType = HarmonyPatchType.Finalizer;
+            case nameof(OnTheFlyPatchType.Finalizer):
+                patchType = OnTheFlyPatchType.Finalizer;
+                return true;
+            case nameof(OnTheFlyPatchType.Replace):
+                patchType = OnTheFlyPatchType.Replace;
                 return true;
             default:
                 patchType = default;

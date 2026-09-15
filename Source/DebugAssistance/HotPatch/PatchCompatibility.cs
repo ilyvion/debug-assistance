@@ -16,17 +16,19 @@ internal static class PatchCompatibility
     internal static bool IsCompatible(
         MethodBase target,
         MethodInfo candidate,
-        HarmonyPatchType patchType
+        OnTheFlyPatchType patchType
     ) =>
-        candidate.IsStatic
-        && (
-            patchType == HarmonyPatchType.Transpiler
-                ? IsTranspilerCompatible(candidate)
-                : IsFixReturnTypeCompatible(target, candidate, patchType)
-                    && candidate
-                        .GetParameters()
-                        .All(parameter => IsFixParameterCompatible(target, parameter))
-        );
+        patchType == OnTheFlyPatchType.Replace
+            ? ReplacePatchBuilder.IsCompatible(target, candidate, out _)
+            : candidate.IsStatic
+                && (
+                    patchType == OnTheFlyPatchType.Transpiler
+                        ? IsTranspilerCompatible(candidate)
+                        : IsFixReturnTypeCompatible(target, candidate, patchType)
+                            && candidate
+                                .GetParameters()
+                                .All(parameter => IsFixParameterCompatible(target, parameter))
+                );
 
     private static bool IsTranspilerCompatible(MethodInfo candidate) =>
         candidate.ReturnType == typeof(IEnumerable<CodeInstruction>)
@@ -41,21 +43,18 @@ internal static class PatchCompatibility
     private static bool IsFixReturnTypeCompatible(
         MethodBase target,
         MethodInfo candidate,
-        HarmonyPatchType patchType
+        OnTheFlyPatchType patchType
     ) =>
         candidate.ReturnType == typeof(void)
         || patchType switch
         {
-            HarmonyPatchType.Prefix => candidate.ReturnType == typeof(bool),
-            HarmonyPatchType.Postfix => TargetReturnType(target) is { } returnType
+            OnTheFlyPatchType.Prefix => candidate.ReturnType == typeof(bool),
+            OnTheFlyPatchType.Postfix => TargetReturnType(target) is { } returnType
                 && returnType != typeof(void)
                 && IsCompatibleType(candidate.ReturnType, returnType),
-            HarmonyPatchType.Finalizer => typeof(Exception).IsAssignableFrom(candidate.ReturnType),
-            HarmonyPatchType.Transpiler
-            or HarmonyPatchType.All
-            or HarmonyPatchType.ReversePatch
-            or HarmonyPatchType.InnerPrefix
-            or HarmonyPatchType.InnerPostfix => true,
+            OnTheFlyPatchType.Finalizer => typeof(Exception).IsAssignableFrom(candidate.ReturnType),
+            OnTheFlyPatchType.Transpiler => true,
+            OnTheFlyPatchType.Replace => true,
             _ => true,
         };
 

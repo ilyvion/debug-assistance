@@ -79,8 +79,17 @@ internal static class PatchCompatibilityTests
             int extra
         ) => instructions;
 
+        public static bool ExactMatchReplacement(int index, ref bool flag) => flag && index == 0;
+
+        public static bool MismatchedParamReplacement(string index, ref bool flag) =>
+            flag && index == null;
+
+        public static void MismatchedReturnReplacement(int index, ref bool flag) { }
+
 #pragma warning disable CA1822 // Mark members as static -- deliberately an instance method
         public bool NotStatic() => true;
+
+        public bool InstanceReplacement(string label) => label.Length == 0;
 #pragma warning restore CA1822
     }
 #pragma warning restore IDE0060
@@ -96,7 +105,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.NotStatic)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.False();
@@ -111,7 +120,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.VoidPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -120,7 +129,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.BoolPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -133,7 +142,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.IntPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.False();
@@ -148,7 +157,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.VoidPostfix)),
-                    HarmonyPatchType.Postfix
+                    OnTheFlyPatchType.Postfix
                 )
             )
             .Is.True();
@@ -157,7 +166,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.MatchingReturnPostfix)),
-                    HarmonyPatchType.Postfix
+                    OnTheFlyPatchType.Postfix
                 )
             )
             .Is.True();
@@ -170,7 +179,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.MismatchedReturnPostfix)),
-                    HarmonyPatchType.Postfix
+                    OnTheFlyPatchType.Postfix
                 )
             )
             .Is.False();
@@ -182,7 +191,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.VoidTarget)),
                     Candidate(nameof(PatchFixtureMethods.MatchingReturnPostfix)),
-                    HarmonyPatchType.Postfix
+                    OnTheFlyPatchType.Postfix
                 )
             )
             .Is.False();
@@ -195,7 +204,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.ResultRefPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -204,7 +213,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.VoidTarget)),
                     Candidate(nameof(PatchFixtureMethods.ResultRefPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.False();
@@ -218,7 +227,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.InstanceTarget)),
                     Candidate(nameof(PatchFixtureMethods.InstanceParamPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -227,7 +236,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.InstanceParamPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.False();
@@ -240,7 +249,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.FieldAccessPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -252,7 +261,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.UnknownFieldAccessPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.False();
@@ -264,7 +273,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.NamedParamPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -276,7 +285,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.PositionalParamPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -288,7 +297,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.UnknownNamedParamPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.False();
@@ -300,7 +309,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.VoidTarget)),
                     Candidate(nameof(PatchFixtureMethods.StateParamPrefix)),
-                    HarmonyPatchType.Prefix
+                    OnTheFlyPatchType.Prefix
                 )
             )
             .Is.True();
@@ -315,7 +324,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.ExceptionParamFinalizer)),
-                    HarmonyPatchType.Finalizer
+                    OnTheFlyPatchType.Finalizer
                 )
             )
             .Is.True();
@@ -324,7 +333,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.ExceptionReturnFinalizer)),
-                    HarmonyPatchType.Finalizer
+                    OnTheFlyPatchType.Finalizer
                 )
             )
             .Is.True();
@@ -337,7 +346,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     Target(nameof(TargetFixture.StaticTarget)),
                     Candidate(nameof(PatchFixtureMethods.InvalidFinalizerReturn)),
-                    HarmonyPatchType.Finalizer
+                    OnTheFlyPatchType.Finalizer
                 )
             )
             .Is.False();
@@ -352,7 +361,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.ValidTranspiler)),
-                    HarmonyPatchType.Transpiler
+                    OnTheFlyPatchType.Transpiler
                 )
             )
             .Is.True();
@@ -361,7 +370,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.ValidTranspilerWithExtras)),
-                    HarmonyPatchType.Transpiler
+                    OnTheFlyPatchType.Transpiler
                 )
             )
             .Is.True();
@@ -377,7 +386,7 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.InvalidTranspilerReturnType)),
-                    HarmonyPatchType.Transpiler
+                    OnTheFlyPatchType.Transpiler
                 )
             )
             .Is.False();
@@ -386,9 +395,69 @@ internal static class PatchCompatibilityTests
                 PatchCompatibility.IsCompatible(
                     target,
                     Candidate(nameof(PatchFixtureMethods.InvalidTranspilerParam)),
-                    HarmonyPatchType.Transpiler
+                    OnTheFlyPatchType.Transpiler
                 )
             )
             .Is.False();
     }
+
+    [Test]
+    public static void ReplaceAcceptsAnExactParameterAndReturnTypeMatch() =>
+        Assert
+            .That(
+                PatchCompatibility.IsCompatible(
+                    Target(nameof(TargetFixture.StaticTarget)),
+                    Candidate(nameof(PatchFixtureMethods.ExactMatchReplacement)),
+                    OnTheFlyPatchType.Replace
+                )
+            )
+            .Is.True();
+
+    [Test]
+    public static void ReplaceRejectsAMismatchedParameterType() =>
+        Assert
+            .That(
+                PatchCompatibility.IsCompatible(
+                    Target(nameof(TargetFixture.StaticTarget)),
+                    Candidate(nameof(PatchFixtureMethods.MismatchedParamReplacement)),
+                    OnTheFlyPatchType.Replace
+                )
+            )
+            .Is.False();
+
+    [Test]
+    public static void ReplaceRejectsAMismatchedReturnType() =>
+        Assert
+            .That(
+                PatchCompatibility.IsCompatible(
+                    Target(nameof(TargetFixture.StaticTarget)),
+                    Candidate(nameof(PatchFixtureMethods.MismatchedReturnReplacement)),
+                    OnTheFlyPatchType.Replace
+                )
+            )
+            .Is.False();
+
+    [Test]
+    public static void ReplaceRejectsMismatchedStaticness() =>
+        Assert
+            .That(
+                PatchCompatibility.IsCompatible(
+                    Target(nameof(TargetFixture.StaticTarget)),
+                    Candidate(nameof(PatchFixtureMethods.NotStatic)),
+                    OnTheFlyPatchType.Replace
+                )
+            )
+            .Is.False();
+
+    [Test]
+    public static void ReplaceAcceptsAnInstanceReplacementForAnInstanceTarget() =>
+        Assert
+            .That(
+                PatchCompatibility.IsCompatible(
+                    Target(nameof(TargetFixture.InstanceTarget)),
+                    Candidate(nameof(PatchFixtureMethods.InstanceReplacement)),
+                    OnTheFlyPatchType.Replace
+                )
+            )
+            .Is.True();
 }

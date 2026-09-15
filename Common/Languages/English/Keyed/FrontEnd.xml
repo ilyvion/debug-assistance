@@ -84,6 +84,7 @@
     <DebugAssistance.FrontEnd.HotPatch.Title>Hot Patch</DebugAssistance.FrontEnd.HotPatch.Title>
     <DebugAssistance.FrontEnd.HotPatch.Back>Back</DebugAssistance.FrontEnd.HotPatch.Back>
     <DebugAssistance.FrontEnd.HotPatch.NoSandboxWarning>There is no sandboxing: a bug in your patch can crash or corrupt the game exactly like a bug in any other Harmony patch.</DebugAssistance.FrontEnd.HotPatch.NoSandboxWarning>
+    <DebugAssistance.FrontEnd.HotPatch.ReplaceWarning>Replace completely skips the target method's own body and runs the replacement method instead. The replacement must have the exact same parameters and return type as the target (and be static if and only if the target is).</DebugAssistance.FrontEnd.HotPatch.ReplaceWarning>
     <DebugAssistance.FrontEnd.HotPatch.AssemblySectionTitle>Patch assembly</DebugAssistance.FrontEnd.HotPatch.AssemblySectionTitle>
     <DebugAssistance.FrontEnd.HotPatch.Load>Load</DebugAssistance.FrontEnd.HotPatch.Load>
     <DebugAssistance.FrontEnd.HotPatch.Reload>Reload</DebugAssistance.FrontEnd.HotPatch.Reload>

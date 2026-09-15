@@ -42,7 +42,7 @@ internal sealed class HotPatchManager
     internal (OnTheFlyPatch? Patch, string? Error) Apply(
         MethodBase target,
         MethodInfo patchMethod,
-        HarmonyPatchType patchType,
+        OnTheFlyPatchType patchType,
         string sourceAssemblyPath,
         int sourceAssemblyGeneration
     )
@@ -53,7 +53,9 @@ internal sealed class HotPatchManager
         // surfacing as an opaque "Invalid IL code ... call 0x00000001"-style error instead of the
         // real problem. Rejecting it here up front, before Harmony ever sees it, gives a much more
         // actionable message for what is otherwise the single most common way to trip that error.
-        if (!patchMethod.IsStatic)
+        // Replace is exempt: ReplacePatchBuilder always produces a static shim regardless of
+        // whether the player's replacement method itself is static.
+        if (!patchMethod.IsStatic && patchType != OnTheFlyPatchType.Replace)
         {
             return (
                 null,
@@ -61,23 +63,33 @@ internal sealed class HotPatchManager
             );
         }
 
+        MethodInfo appliedMethod;
+        if (patchType == OnTheFlyPatchType.Replace)
+        {
+            var (shim, buildError) = ReplacePatchBuilder.Build(_harmony, target, patchMethod);
+            if (shim is null)
+            {
+                return (null, buildError);
+            }
+            appliedMethod = shim;
+        }
+        else
+        {
+            appliedMethod = patchMethod;
+        }
+
         try
         {
-            var method = new HarmonyMethod(patchMethod);
+            var method = new HarmonyMethod(appliedMethod);
             _ = patchType switch
             {
-                HarmonyPatchType.Prefix => _harmony.Patch(target, prefix: method),
-                HarmonyPatchType.Postfix => _harmony.Patch(target, postfix: method),
-                HarmonyPatchType.Transpiler => _harmony.Patch(target, transpiler: method),
-                HarmonyPatchType.Finalizer => _harmony.Patch(target, finalizer: method),
-                HarmonyPatchType.All
-                or HarmonyPatchType.ReversePatch
-                or HarmonyPatchType.InnerPrefix
-                or HarmonyPatchType.InnerPostfix => throw new ArgumentOutOfRangeException(
-                    nameof(patchType),
-                    patchType,
-                    "Only Prefix, Postfix, Transpiler, and Finalizer are supported for on-the-fly patches."
+                OnTheFlyPatchType.Prefix or OnTheFlyPatchType.Replace => _harmony.Patch(
+                    target,
+                    prefix: method
                 ),
+                OnTheFlyPatchType.Postfix => _harmony.Patch(target, postfix: method),
+                OnTheFlyPatchType.Transpiler => _harmony.Patch(target, transpiler: method),
+                OnTheFlyPatchType.Finalizer => _harmony.Patch(target, finalizer: method),
                 _ => throw new ArgumentOutOfRangeException(nameof(patchType), patchType, null),
             };
         }
@@ -90,6 +102,7 @@ internal sealed class HotPatchManager
         var patch = OnTheFlyPatch.Create(
             target,
             patchMethod,
+            appliedMethod,
             patchType,
             sourceAssemblyPath,
             sourceAssemblyGeneration
@@ -148,7 +161,11 @@ internal sealed class HotPatchManager
             }
         }
 
-        _harmony.Unpatch(patch.Target, patch.PatchMethod);
+        _harmony.Unpatch(patch.Target, patch.AppliedMethod);
+        if (patch.PatchType == OnTheFlyPatchType.Replace)
+        {
+            ReplacePatchBuilder.Forget(patch.Target);
+        }
         return true;
     }
 
@@ -189,7 +206,11 @@ internal sealed class HotPatchManager
 
         foreach (var patch in removed)
         {
-            _harmony.Unpatch(patch.Target, patch.PatchMethod);
+            _harmony.Unpatch(patch.Target, patch.AppliedMethod);
+            if (patch.PatchType == OnTheFlyPatchType.Replace)
+            {
+                ReplacePatchBuilder.Forget(patch.Target);
+            }
         }
 
         return removed;

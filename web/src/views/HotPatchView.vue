@@ -601,8 +601,13 @@ async function remove(id: string) {
                                         Transpiler
                                     </option>
                                     <option value="Finalizer">Finalizer</option>
+                                    <option value="Replace">Replace</option>
                                 </select>
                             </label>
+
+                            <p v-if="patchType === 'Replace'" class="warning">
+                                {{ t('HotPatch.ReplaceWarning') }}
+                            </p>
 
                             <label
                                 class="compatibility-filter-label"
