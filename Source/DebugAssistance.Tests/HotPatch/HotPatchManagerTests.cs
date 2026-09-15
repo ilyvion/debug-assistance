@@ -434,4 +434,64 @@ internal static class HotPatchManagerTests
 
         _ = manager.Remove(fromOtherAssembly!);
     }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RemoveManyTargetA(int value) => _ = value;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RemoveManyTargetB(int value) => _ = value;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RemoveManyTargetC(int value) => _ = value;
+
+#pragma warning disable IDE0051 // Used as a Harmony patch method, invoked by reflection
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RemoveManyNoOpPrefix() { }
+#pragma warning restore IDE0051
+
+    // The multi-select "Remove selected" scenario: only the ids passed in are removed, an active
+    // patch whose id isn't among them is left alone, and an id that doesn't match any active patch
+    // is silently ignored rather than erroring the whole call.
+    [Test]
+    public static void RemoveManyRemovesOnlyTheGivenIdsAndIgnoresUnknownOnes()
+    {
+        var manager = new HotPatchManager("test.debugassistance.hotpatchmanagertests.removemany");
+        var patchMethod = AccessTools.Method(
+            typeof(HotPatchManagerTests),
+            nameof(RemoveManyNoOpPrefix)
+        );
+
+        var (patchA, errorA) = manager.Apply(
+            AccessTools.Method(typeof(HotPatchManagerTests), nameof(RemoveManyTargetA)),
+            patchMethod,
+            OnTheFlyPatchType.Prefix,
+            "fixture.dll",
+            1
+        );
+        var (patchB, errorB) = manager.Apply(
+            AccessTools.Method(typeof(HotPatchManagerTests), nameof(RemoveManyTargetB)),
+            patchMethod,
+            OnTheFlyPatchType.Prefix,
+            "fixture.dll",
+            1
+        );
+        var (patchC, errorC) = manager.Apply(
+            AccessTools.Method(typeof(HotPatchManagerTests), nameof(RemoveManyTargetC)),
+            patchMethod,
+            OnTheFlyPatchType.Prefix,
+            "fixture.dll",
+            1
+        );
+        Assert.That(errorA is null).Is.True();
+        Assert.That(errorB is null).Is.True();
+        Assert.That(errorC is null).Is.True();
+
+        var removed = manager.RemoveMany([patchA!.Id, patchC!.Id, Guid.NewGuid()]);
+
+        Assert.ThatCollection(removed).Has.Count(2);
+        Assert.ThatCollection(manager.ActivePatches).Has.Count(1);
+        Assert.That(manager.ActivePatches[0].Id.Equals(patchB!.Id)).Is.True();
+
+        _ = manager.Remove(patchB!);
+    }
 }

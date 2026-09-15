@@ -109,6 +109,9 @@
     <DebugAssistance.FrontEnd.HotPatch.RemoveConfirm>Remove this patch? It will stop taking effect immediately.</DebugAssistance.FrontEnd.HotPatch.RemoveConfirm>
     <DebugAssistance.FrontEnd.HotPatch.Confirm>Confirm</DebugAssistance.FrontEnd.HotPatch.Confirm>
     <DebugAssistance.FrontEnd.HotPatch.Cancel>Cancel</DebugAssistance.FrontEnd.HotPatch.Cancel>
+    <DebugAssistance.FrontEnd.HotPatch.SelectAll>Select all</DebugAssistance.FrontEnd.HotPatch.SelectAll>
+    <DebugAssistance.FrontEnd.HotPatch.RemoveSelected>Remove selected ({0})</DebugAssistance.FrontEnd.HotPatch.RemoveSelected>
+    <DebugAssistance.FrontEnd.HotPatch.RemoveSelectedConfirm>Remove {0} selected patch(es)? They will stop taking effect immediately.</DebugAssistance.FrontEnd.HotPatch.RemoveSelectedConfirm>
     <DebugAssistance.FrontEnd.HotPatch.ChangeMethod>Change</DebugAssistance.FrontEnd.HotPatch.ChangeMethod>
     <DebugAssistance.FrontEnd.HotPatch.MethodFilterPlaceholder>Filter methods by name, or Type.Method…</DebugAssistance.FrontEnd.HotPatch.MethodFilterPlaceholder>
     <DebugAssistance.FrontEnd.HotPatch.SearchingMethods>Searching…</DebugAssistance.FrontEnd.HotPatch.SearchingMethods>

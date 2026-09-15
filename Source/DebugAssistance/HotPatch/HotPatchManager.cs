@@ -183,6 +183,33 @@ internal sealed class HotPatchManager
         }
     }
 
+    // Removes every currently active patch whose id is in `ids`, skipping any id that doesn't
+    // match an active patch -- the multi-select "Remove selected" action in the active-patches
+    // list. Same surgical per-patch Unpatch as Remove above, just looped.
+    internal IReadOnlyList<OnTheFlyPatch> RemoveMany(HashSet<Guid> ids)
+    {
+        List<OnTheFlyPatch> removed;
+        lock (_lock)
+        {
+            removed = [.. _activePatches.Where(patch => ids.Contains(patch.Id))];
+            foreach (var patch in removed)
+            {
+                _ = _activePatches.Remove(patch);
+            }
+        }
+
+        foreach (var patch in removed)
+        {
+            _harmony.Unpatch(patch.Target, patch.AppliedMethod);
+            if (patch.PatchType == OnTheFlyPatchType.Replace)
+            {
+                ReplacePatchBuilder.Forget(patch.Target);
+            }
+        }
+
+        return removed;
+    }
+
     // Called when the player reloads an assembly and chooses to remove its previous generation's
     // patches rather than leave them running: the classic .NET/Mono runtime RimWorld embeds has
     // no collectible/unloadable AssemblyLoadContext, so the previous load's Assembly instance --

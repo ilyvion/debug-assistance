@@ -14,6 +14,7 @@ import {
     fetchSuggestedScaffoldProjectName,
     loadHotPatchAssembly,
     removeHotPatch,
+    removeManyHotPatches,
     scaffoldHotPatchProject,
 } from '../src/api';
 import { settings } from '../src/settings';
@@ -34,6 +35,7 @@ vi.mock('../src/api', () => ({
     fetchSuggestedScaffoldProjectName: vi.fn(),
     loadHotPatchAssembly: vi.fn(),
     removeHotPatch: vi.fn(),
+    removeManyHotPatches: vi.fn(),
     scaffoldHotPatchProject: vi.fn(),
 }));
 
@@ -709,6 +711,109 @@ describe('HotPatchView', () => {
             false,
         );
         expect(wrapper.findAll('.active-patches-section li')).toHaveLength(1);
+    });
+
+    function twoActivePatches(): ActivePatch[] {
+        return [
+            {
+                id: 'patch-1',
+                targetDescription: 'RimWorld.SomeClass.SomeMethod',
+                patchMethodDescription: 'MyPatch.Fixes.Prefix',
+                patchType: 'Prefix',
+                sourceAssemblyPath: '/dev/patch.dll',
+                sourceAssemblyName: 'MyPatch',
+                sourceAssemblyGeneration: 1,
+            },
+            {
+                id: 'patch-2',
+                targetDescription: 'RimWorld.OtherClass.OtherMethod',
+                patchMethodDescription: 'MyPatch.Fixes.Postfix',
+                patchType: 'Postfix',
+                sourceAssemblyPath: '/dev/patch.dll',
+                sourceAssemblyName: 'MyPatch',
+                sourceAssemblyGeneration: 1,
+            },
+        ];
+    }
+
+    it('removes only the selected patches after a single batch confirmation', async () => {
+        vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce(
+            twoActivePatches(),
+        );
+        const wrapper = mount(HotPatchView);
+        await flushMicrotasks();
+
+        const checkboxes = wrapper.findAll(
+            '.active-patches-section .active-list-row input[type=checkbox]',
+        );
+        await checkboxes[0].setValue(true);
+        await wrapper.find('.active-list-toolbar button').trigger('click');
+        await flushMicrotasks();
+
+        expect(removeManyHotPatches).not.toHaveBeenCalled();
+        expect(wrapper.find('.confirm.bulk').exists()).toBe(true);
+
+        vi.mocked(removeManyHotPatches).mockResolvedValueOnce(['patch-1']);
+        vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce([
+            twoActivePatches()[1],
+        ]);
+
+        await wrapper.find('.confirm.bulk button').trigger('click');
+        await flushMicrotasks();
+
+        expect(removeManyHotPatches).toHaveBeenCalledWith(['patch-1']);
+        expect(wrapper.findAll('.active-patches-section li')).toHaveLength(1);
+    });
+
+    it('selects and deselects every patch via the select-all checkbox', async () => {
+        vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce(
+            twoActivePatches(),
+        );
+        const wrapper = mount(HotPatchView);
+        await flushMicrotasks();
+
+        await wrapper
+            .find('.active-list-toolbar input[type=checkbox]')
+            .setValue(true);
+
+        const rowCheckboxes = wrapper.findAll(
+            '.active-patches-section .active-list-row input[type=checkbox]',
+        );
+        for (const checkbox of rowCheckboxes) {
+            expect((checkbox.element as HTMLInputElement).checked).toBe(true);
+        }
+
+        await wrapper
+            .find('.active-list-toolbar input[type=checkbox]')
+            .setValue(false);
+        for (const checkbox of wrapper.findAll(
+            '.active-patches-section .active-list-row input[type=checkbox]',
+        )) {
+            expect((checkbox.element as HTMLInputElement).checked).toBe(false);
+        }
+    });
+
+    it('cancels the pending bulk removal without calling removeManyHotPatches', async () => {
+        vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce(
+            twoActivePatches(),
+        );
+        const wrapper = mount(HotPatchView);
+        await flushMicrotasks();
+
+        const checkboxes = wrapper.findAll(
+            '.active-patches-section .active-list-row input[type=checkbox]',
+        );
+        await checkboxes[0].setValue(true);
+        await wrapper.find('.active-list-toolbar button').trigger('click');
+        await flushMicrotasks();
+
+        const confirmButtons = wrapper.findAll('.confirm.bulk button');
+        await confirmButtons[1].trigger('click');
+        await flushMicrotasks();
+
+        expect(removeManyHotPatches).not.toHaveBeenCalled();
+        expect(wrapper.find('.confirm.bulk').exists()).toBe(false);
+        expect(wrapper.findAll('.active-patches-section li')).toHaveLength(2);
     });
 
     // The "Patch this method" entry point: a captured frame's resolved method arrives as

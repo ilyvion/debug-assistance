@@ -143,6 +143,16 @@ internal sealed record RemovePatchResultDto
     public required bool Removed { get; init; }
 }
 
+internal sealed record RemoveManyPatchesRequestDto
+{
+    public required IReadOnlyList<string> Ids { get; init; }
+}
+
+internal sealed record RemoveManyPatchesResultDto
+{
+    public required IReadOnlyList<string> RemovedIds { get; init; }
+}
+
 // Target is optional: an arbitrary-method scaffold (the from-scratch entry point) has no
 // method to reflect a signature-matched stub from, and ProjectScaffolder already handles a null
 // targetMethod by emitting the generic stub.

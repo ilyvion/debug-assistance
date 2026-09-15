@@ -205,6 +205,8 @@ internal sealed class DebugAssistanceServer(
                 ctx,
                 parts[3]
             ),
+            ("hotpatch", _, _, 3) when parts[2] == "remove-many" =>
+                HotPatchEndpoints.ServeRemoveManyPatches(ctx),
             ("hotpatch", _, _, 3) when parts[2] == "scaffold" => HotPatchEndpoints.ServeScaffold(
                 ctx
             ),

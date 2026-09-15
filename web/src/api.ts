@@ -377,6 +377,14 @@ export async function removeHotPatch(
     return body;
 }
 
+export async function removeManyHotPatches(ids: string[]): Promise<string[]> {
+    const body = await postJson<{ removedIds: string[] }>(
+        '/api/hotpatch/remove-many',
+        { ids },
+    );
+    return body.removedIds;
+}
+
 export async function scaffoldHotPatchProject(
     directoryPath: string,
     projectName: string,

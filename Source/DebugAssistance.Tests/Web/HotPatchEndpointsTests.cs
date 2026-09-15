@@ -509,6 +509,117 @@ internal static class HotPatchEndpointsTests
         Assert.That(count).Is.EqualTo(1);
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RemoveManyEndpointTarget() { }
+
+#pragma warning disable IDE0051 // Used as a Harmony patch method by reflection in HotPatchManager
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RemoveManyEndpointPostfix() { }
+#pragma warning restore IDE0051
+
+    // Goes through a real HttpListener/HttpClient round trip, same reasoning as
+    // ApplyPatchReturnsBadRequestInsteadOfCrashingWhenRequiredFieldsAreMissing above. Applies a real
+    // patch via the module-wide DebugAssistanceMod.HotPatchManager (the same instance
+    // ServeRemoveManyPatches reads from), then confirms the "Remove selected" round trip removes
+    // exactly the requested id, leaves the other one active, and reports the unknown id as simply
+    // not among RemovedIds instead of failing the whole request.
+    [Test]
+    public static void RemoveManyRemovesOnlyTheRequestedIdsAndSkipsUnknownOnes() =>
+        Assert
+            .ThatFunc(() =>
+            {
+                var target = AccessTools.Method(
+                    typeof(HotPatchEndpointsTests),
+                    nameof(RemoveManyEndpointTarget)
+                );
+                var patchMethod = AccessTools.Method(
+                    typeof(HotPatchEndpointsTests),
+                    nameof(RemoveManyEndpointPostfix)
+                );
+                var (patchToRemove, errorToRemove) = DebugAssistanceMod.HotPatchManager.Apply(
+                    target,
+                    patchMethod,
+                    OnTheFlyPatchType.Postfix,
+                    "fixture.dll",
+                    1
+                );
+                var (patchToKeep, errorToKeep) = DebugAssistanceMod.HotPatchManager.Apply(
+                    AccessTools.Method(typeof(HotPatchEndpointsTests), nameof(SomeTarget)),
+                    AccessTools.Method(typeof(HotPatchEndpointsTests), nameof(SomePostfix)),
+                    OnTheFlyPatchType.Postfix,
+                    "fixture.dll",
+                    1
+                );
+                if (errorToRemove is not null || errorToKeep is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"Setup patches failed to apply: {errorToRemove} / {errorToKeep}"
+                    );
+                }
+
+                var port = FindFreeTcpPort();
+                using var server = new DebugAssistanceServer(
+                    port,
+                    Path.GetTempPath(),
+                    allowExternalConnections: false
+                );
+
+                var thread = new Thread(server.Start);
+                thread.Start();
+                Thread.Sleep(200);
+
+                try
+                {
+                    using var client = new HttpClient();
+                    var uri = new Uri($"http://localhost:{port}/api/hotpatch/remove-many");
+                    var requestBody =
+                        $$"""{"ids":["{{patchToRemove!.Id}}","{{Guid.NewGuid()}}"]}""";
+                    using var response = client
+                        .PostAsync(
+                            uri,
+                            new StringContent(requestBody, Encoding.UTF8, "application/json")
+                        )
+                        .GetAwaiter()
+                        .GetResult();
+
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected 200 OK, got {(int)response.StatusCode}"
+                        );
+                    }
+
+                    var json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    if (!json.Contains(patchToRemove.Id.ToString(), StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected removedIds to contain {patchToRemove.Id}, got: {json}"
+                        );
+                    }
+
+                    var stillActive = DebugAssistanceMod.HotPatchManager.ActivePatches;
+                    if (stillActive.Any(p => p.Id == patchToRemove.Id))
+                    {
+                        throw new InvalidOperationException(
+                            "Expected the requested patch to no longer be active"
+                        );
+                    }
+                    if (!stillActive.Any(p => p.Id == patchToKeep!.Id))
+                    {
+                        throw new InvalidOperationException(
+                            "Expected the patch not named in the request to remain active"
+                        );
+                    }
+                }
+                finally
+                {
+                    _ = DebugAssistanceMod.HotPatchManager.Remove(patchToKeep!);
+                    server.Stop();
+                    _ = thread.Join(TimeSpan.FromSeconds(5));
+                }
+            })
+            .Does.Not.Throw();
+
     [Test]
     public static void DescribePatchCombinesThePatchTypeAndTheTargetsDescription()
     {

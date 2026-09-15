@@ -442,6 +442,38 @@ internal static class HotPatchEndpoints
         return true;
     }
 
+    // POST /api/hotpatch/remove-many: the multi-select "Remove selected" action. Unknown or
+    // already-inactive ids are silently skipped rather than erroring the whole request -- the
+    // player picked from a snapshot of ActivePatches that could have gone stale by the time they
+    // confirmed, and RemovedIds tells the UI exactly what actually went away.
+    internal static bool ServeRemoveManyPatches(HttpListenerContext ctx)
+    {
+        var body = ctx.Request.ReadJson<RemoveManyPatchesRequestDto>();
+        if (body?.Ids is null)
+        {
+            return ctx.Response.WriteJsonError(400, "ids is required");
+        }
+
+        var ids = new HashSet<Guid>();
+        foreach (var idText in body.Ids)
+        {
+            if (!Guid.TryParse(idText, out var id))
+            {
+                return ctx.Response.WriteJsonError(400, $"Invalid patch id: {idText}");
+            }
+            _ = ids.Add(id);
+        }
+
+        var removed = DebugAssistanceMod.HotPatchManager.RemoveMany(ids);
+        ctx.Response.WriteJson(
+            new RemoveManyPatchesResultDto
+            {
+                RemovedIds = [.. removed.Select(patch => patch.Id.ToString())],
+            }
+        );
+        return true;
+    }
+
     // POST /api/hotpatch/scaffold: reaches ProjectScaffolder from either hot-patch entry point --
     // Target is whichever method the panel's own target-method picker currently holds (pre-filled
     // from a frame, hand-picked, or left unset), never a separate selection of its own.

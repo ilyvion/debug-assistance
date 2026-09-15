@@ -9,6 +9,7 @@ import {
     fetchSuggestedScaffoldProjectName,
     loadHotPatchAssembly,
     removeHotPatch,
+    removeManyHotPatches,
     scaffoldHotPatchProject,
 } from '../api';
 import FileBrowser from '../components/FileBrowser.vue';
@@ -96,6 +97,8 @@ const applying = ref(false);
 const activePatches = ref<ActivePatch[]>([]);
 const activeError = ref<string | null>(null);
 const pendingRemove = ref<string | null>(null);
+const selectedPatchIds = ref<Set<string>>(new Set());
+const pendingBulkRemove = ref(false);
 
 const scaffoldDirectory = ref(loadLastPath('scaffold-directory'));
 watch(scaffoldDirectory, (value) => {
@@ -134,6 +137,12 @@ async function refreshActive() {
     try {
         activePatches.value = await fetchActiveHotPatches();
         activeError.value = null;
+        const stillActive = new Set(
+            activePatches.value.map((patch) => patch.id),
+        );
+        selectedPatchIds.value = new Set(
+            [...selectedPatchIds.value].filter((id) => stillActive.has(id)),
+        );
     } catch (err) {
         activeError.value = describeError(err);
     }
@@ -307,6 +316,34 @@ async function remove(id: string) {
         activeError.value = describeError(err);
     }
 }
+
+function togglePatchSelected(id: string) {
+    const next = new Set(selectedPatchIds.value);
+    if (next.has(id)) {
+        next.delete(id);
+    } else {
+        next.add(id);
+    }
+    selectedPatchIds.value = next;
+}
+
+function toggleSelectAllPatches() {
+    selectedPatchIds.value =
+        selectedPatchIds.value.size === activePatches.value.length
+            ? new Set()
+            : new Set(activePatches.value.map((patch) => patch.id));
+}
+
+async function removeSelected() {
+    try {
+        await removeManyHotPatches([...selectedPatchIds.value]);
+        pendingBulkRemove.value = false;
+        selectedPatchIds.value = new Set();
+        await refreshActive();
+    } catch (err) {
+        activeError.value = describeError(err);
+    }
+}
 </script>
 
 <template>
@@ -332,40 +369,94 @@ async function remove(id: string) {
                     >
                         {{ t('HotPatch.NoActivePatches') }}
                     </p>
-                    <ul v-else class="active-list">
-                        <li v-for="patch in activePatches" :key="patch.id">
-                            <div class="active-list-row">
-                                <span class="description">
-                                    {{ patch.patchType }}: [{{
-                                        patch.sourceAssemblyName
-                                    }}#{{ patch.sourceAssemblyGeneration }}]
-                                    {{ patch.patchMethodDescription }} →
-                                    {{ patch.targetDescription }}
-                                </span>
-                                <button
-                                    type="button"
-                                    @click="pendingRemove = patch.id"
-                                >
-                                    {{ t('HotPatch.Remove') }}
-                                </button>
-                            </div>
-                            <div
-                                v-if="pendingRemove === patch.id"
-                                class="confirm"
+                    <template v-else>
+                        <div class="active-list-toolbar">
+                            <label class="select-all-label">
+                                <input
+                                    type="checkbox"
+                                    :checked="
+                                        selectedPatchIds.size ===
+                                        activePatches.length
+                                    "
+                                    @change="toggleSelectAllPatches"
+                                />
+                                {{ t('HotPatch.SelectAll') }}
+                            </label>
+                            <button
+                                type="button"
+                                :disabled="selectedPatchIds.size === 0"
+                                @click="pendingBulkRemove = true"
                             >
-                                {{ t('HotPatch.RemoveConfirm') }}
-                                <button type="button" @click="remove(patch.id)">
-                                    {{ t('HotPatch.Confirm') }}
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="pendingRemove = null"
+                                {{
+                                    t(
+                                        'HotPatch.RemoveSelected',
+                                        selectedPatchIds.size,
+                                    )
+                                }}
+                            </button>
+                        </div>
+                        <div v-if="pendingBulkRemove" class="confirm bulk">
+                            {{
+                                t(
+                                    'HotPatch.RemoveSelectedConfirm',
+                                    selectedPatchIds.size,
+                                )
+                            }}
+                            <button type="button" @click="removeSelected">
+                                {{ t('HotPatch.Confirm') }}
+                            </button>
+                            <button
+                                type="button"
+                                @click="pendingBulkRemove = false"
+                            >
+                                {{ t('HotPatch.Cancel') }}
+                            </button>
+                        </div>
+                        <ul class="active-list">
+                            <li v-for="patch in activePatches" :key="patch.id">
+                                <div class="active-list-row">
+                                    <input
+                                        type="checkbox"
+                                        :checked="
+                                            selectedPatchIds.has(patch.id)
+                                        "
+                                        @change="togglePatchSelected(patch.id)"
+                                    />
+                                    <span class="description">
+                                        {{ patch.patchType }}: [{{
+                                            patch.sourceAssemblyName
+                                        }}#{{ patch.sourceAssemblyGeneration }}]
+                                        {{ patch.patchMethodDescription }} →
+                                        {{ patch.targetDescription }}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        @click="pendingRemove = patch.id"
+                                    >
+                                        {{ t('HotPatch.Remove') }}
+                                    </button>
+                                </div>
+                                <div
+                                    v-if="pendingRemove === patch.id"
+                                    class="confirm"
                                 >
-                                    {{ t('HotPatch.Cancel') }}
-                                </button>
-                            </div>
-                        </li>
-                    </ul>
+                                    {{ t('HotPatch.RemoveConfirm') }}
+                                    <button
+                                        type="button"
+                                        @click="remove(patch.id)"
+                                    >
+                                        {{ t('HotPatch.Confirm') }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="pendingRemove = null"
+                                    >
+                                        {{ t('HotPatch.Cancel') }}
+                                    </button>
+                                </div>
+                            </li>
+                        </ul>
+                    </template>
                 </section>
             </aside>
 
@@ -894,6 +985,21 @@ section h4 {
     font-size: 12px;
 }
 
+.active-list-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .active-list {
     list-style: none;
     margin: 0;
@@ -930,5 +1036,10 @@ section h4 {
     font-size: 13px;
     margin-top: 6px;
     width: 100%;
+}
+
+.confirm.bulk {
+    margin-top: 0;
+    margin-bottom: 8px;
 }
 </style>
