@@ -192,13 +192,19 @@ internal static class HotPatchEndpoints
         return target is null ? null : (target, patchType);
     }
 
+    // A constructor can never serve as a Prefix/Postfix/Transpiler/Finalizer -- Harmony patch
+    // methods must be ordinary MethodInfos -- so it's never compatible here, regardless of
+    // PatchType. This only matters for the patch-method picker (browsing the player's own
+    // assembly for candidates); the target-method picker never sets compatibleWith at all, so a
+    // constructor being a valid patch *target* is unaffected.
     private static bool IsCompatible(
         BrowsedMethod method,
         (MethodBase Target, OnTheFlyPatchType PatchType) compatibleWith
     ) =>
-        PatchCompatibility.IsCompatible(
+        method.Method is MethodInfo candidate
+        && PatchCompatibility.IsCompatible(
             compatibleWith.Target,
-            (MethodInfo)method.Method,
+            candidate,
             compatibleWith.PatchType
         );
 

@@ -147,9 +147,13 @@ internal static class HotPatchEndpointsTests
         DefineParameterlessStaticMethod(allIncompatibleType, "OnlyIncompatible", typeof(int));
         _ = allIncompatibleType.CreateType();
 
+        // An interface rather than a class: TypeBuilder auto-adds a default constructor to any
+        // class left without one, so a class here would no longer be genuinely method-less now that
+        // MethodBrowser reports constructors too. Interfaces can't have instance constructors, so
+        // this keeps a true zero-member type to test the "nothing to pick" pruning against.
         var emptyType = moduleBuilder.DefineType(
             "Fixture.EmptyType",
-            TypeAttributes.Public | TypeAttributes.Class
+            TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract
         );
         _ = emptyType.CreateType();
 
@@ -421,7 +425,9 @@ internal static class HotPatchEndpointsTests
         var assembly = LoadFixture(BuildCompatibilityFixtureAssembly());
         var type = assembly.GetType("Fixture.MixedType");
 
-        Assert.That(HotPatchEndpoints.CountMethods(assembly, type, null)).Is.EqualTo(2);
+        // CompatibleMethod, IncompatibleMethod, and the implicit default constructor
+        // TypeBuilder.CreateType() adds since MixedType never declares one of its own.
+        Assert.That(HotPatchEndpoints.CountMethods(assembly, type, null)).Is.EqualTo(3);
     }
 
     [Test]
@@ -430,6 +436,29 @@ internal static class HotPatchEndpointsTests
         var assembly = LoadFixture(BuildCompatibilityFixtureAssembly());
         var type = assembly.GetType("Fixture.MixedType");
         var target = type.GetMethod("CompatibleMethod");
+
+        var count = HotPatchEndpoints.CountMethods(
+            assembly,
+            type,
+            (target, OnTheFlyPatchType.Prefix)
+        );
+
+        Assert.That(count).Is.EqualTo(1);
+    }
+
+    // A constructor can never serve as a Prefix/Postfix/Transpiler/Finalizer, so it must never be
+    // offered by the patch-method picker regardless of what PatchCompatibility.IsCompatible would
+    // otherwise say about a same-signature ordinary method (implicitly covered above too, since
+    // MixedType's default constructor is excluded from that count(1), but this asserts it directly).
+    [Test]
+    public static void CountMethodsExcludesConstructorsWhenAFilterIsGiven()
+    {
+        var assembly = LoadFixture(BuildCompatibilityFixtureAssembly());
+        var type = assembly.GetType("Fixture.MixedType");
+        var target = type.GetMethod("CompatibleMethod");
+
+        var methods = MethodBrowser.BrowseMethods(assembly, type);
+        Assert.ThatCollection(methods.Select(m => m.Method.Name)).Does.Contain(".ctor");
 
         var count = HotPatchEndpoints.CountMethods(
             assembly,

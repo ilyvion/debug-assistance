@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In the Hot Patch view's 'Patch method' browser, navigating back up to a type or namespace after changing the target method (or Prefix/Postfix/etc.) no longer shows the old, now-outdated list of compatible types and methods.
 - Applying a hot patch after reloading the same patch assembly several times in a row no longer sometimes fails with 'Unexpected null in ...' (or silently applies against a stale, previously-loaded version of your patch method).
 - In the Error Inspector's stack frame listing, each applied patch now shows its fully qualified type and method name instead of just the method name.
+- The Hot Patch view's target-method picker now lists constructors alongside ordinary methods, shown as `TypeName(parameters)`. Previously constructors never appeared in the list at all, so they couldn't be picked as a patch target.
 
 ## [0.1.0] - 2026-09-10
 

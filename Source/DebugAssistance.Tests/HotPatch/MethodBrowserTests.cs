@@ -135,10 +135,13 @@ internal static class MethodBrowserTests
 
         var results = MethodBrowser.Browse([assembly], "Good");
 
-        Assert.ThatCollection(results).Has.Count(2);
+        // "Good" gets an implicit default constructor from CreateType() alongside its two declared
+        // methods, and MethodBrowser now reports constructors too.
+        Assert.ThatCollection(results).Has.Count(3);
         var methodNames = results.Select(r => r.Method.Name).ToList();
         Assert.ThatCollection(methodNames).Does.Contain("Alpha");
         Assert.ThatCollection(methodNames).Does.Contain("PrivateBeta");
+        Assert.ThatCollection(methodNames).Does.Contain(".ctor");
     }
 
     [Test]
@@ -275,7 +278,20 @@ internal static class MethodBrowserTests
 
         Assert.ThatCollection(methods.Select(m => m.Method.Name)).Does.Contain("Alpha");
         Assert.ThatCollection(methods.Select(m => m.Method.Name)).Does.Contain("PrivateBeta");
-        Assert.ThatCollection(methods).Has.Count(2);
+        Assert.ThatCollection(methods.Select(m => m.Method.Name)).Does.Contain(".ctor");
+        Assert.ThatCollection(methods).Has.Count(3);
+    }
+
+    [Test]
+    public static void BrowseMethodsIncludesConstructorsAsConstructorInfo()
+    {
+        var assembly = LoadFixture(BuildFixtureAssembly());
+        var goodType = assembly.GetType("Fixture.Good");
+
+        var methods = MethodBrowser.BrowseMethods(assembly, goodType);
+
+        var ctor = methods.Single(m => m.Method.Name == ".ctor");
+        Assert.That(ctor.Method is ConstructorInfo).Is.True();
     }
 
     private sealed class CustomNamespaceMarker;
@@ -328,5 +344,25 @@ internal static class MethodBrowserTests
         Assert
             .That(signature)
             .Is.EqualTo($"Void WithCustomTypeParam({typeof(CustomNamespaceMarker)} marker)");
+    }
+
+#pragma warning disable IDE0290,IDE0060
+    private sealed class WithConstructorParams
+    {
+        public WithConstructorParams(int index, string label) { }
+    }
+#pragma warning restore IDE0290,IDE0060
+
+    // Constructors are named ".ctor" by the CLR -- showing that raw name in the picker would be
+    // unreadable, so this uses the declaring type's own name instead, the way a player would write
+    // a constructor call.
+    [Test]
+    public static void FormatSignatureUsesTheDeclaringTypeNameForAConstructor()
+    {
+        var ctor = typeof(WithConstructorParams).GetConstructor([typeof(int), typeof(string)]);
+
+        var signature = MethodBrowser.FormatSignature(ctor);
+
+        Assert.That(signature).Is.EqualTo("WithConstructorParams(Int32 index, String label)");
     }
 }

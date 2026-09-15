@@ -33,7 +33,7 @@ internal static class MethodBrowser
     // through GetLoadableTypes/GetLoadableMethods below, so caching there covers the whole tree
     // (namespaces/types/method-counts) without needing its own cache per level.
     private static readonly ConcurrentDictionary<Assembly, Type[]> TypesCache = new();
-    private static readonly ConcurrentDictionary<Type, MethodInfo[]> MethodsCache = new();
+    private static readonly ConcurrentDictionary<Type, MethodBase[]> MethodsCache = new();
 
     // A filter containing a "." splits into a type-name part (everything before the last ".") and
     // a method-name part (everything after), so "CompGlower.PostExposeData" narrows to methods
@@ -126,10 +126,15 @@ internal static class MethodBrowser
     // System.* namespace stripping) but adds each parameter's name.
     internal static string FormatSignature(MethodBase method)
     {
+        var parameters = string.Join(", ", method.GetParameters().Select(FormatParameter));
+        if (method is ConstructorInfo)
+        {
+            return $"{method.DeclaringType?.Name ?? method.Name}({parameters})";
+        }
+
         var returnTypeName = method is MethodInfo methodInfo
             ? FormatTypeName(methodInfo.ReturnType)
             : "Void";
-        var parameters = string.Join(", ", method.GetParameters().Select(FormatParameter));
         return $"{returnTypeName} {method.Name}({parameters})";
     }
 
@@ -170,14 +175,18 @@ internal static class MethodBrowser
     // something actually resolves its vtable, which enumerating its members does. Guarding here
     // (in addition to GetLoadableTypes' own guard) is what keeps that kind of type from taking
     // down the whole browse instead of just being skipped.
-    private static MethodInfo[] GetLoadableMethods(Type type) =>
+    private static MethodBase[] GetLoadableMethods(Type type) =>
         MethodsCache.GetOrAdd(
             type,
             static t =>
             {
                 try
                 {
-                    return t.GetMethods(AllDeclaredMethods);
+                    return
+                    [
+                        .. t.GetMethods(AllDeclaredMethods),
+                        .. t.GetConstructors(AllDeclaredMethods),
+                    ];
                 }
                 catch (Exception ex) when (ex is TypeLoadException or ReflectionTypeLoadException)
                 {
