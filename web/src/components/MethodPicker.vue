@@ -213,13 +213,29 @@ function canGoUp(): boolean {
     );
 }
 
+// Re-fetches the target level's list rather than just flipping browseLevel, since the
+// compatibility filter (targetMethod/patchType) may have changed while browsing a deeper level --
+// the watch below only re-fetches the leaf list currently on screen, so an ancestor level's cached
+// namespaces/types would otherwise still reflect the old filter once the player navigates back up
+// to it.
+async function goToLevel(level: 0 | 1 | 2 | 3) {
+    if (level === browseLevel.value) {
+        return;
+    }
+    if (level === 3 && selectedType.value) {
+        await selectType(selectedType.value);
+    } else if (level === 2 && selectedNamespace.value) {
+        await selectNamespace(selectedNamespace.value);
+    } else if (level === 1 && selectedAssembly.value) {
+        await selectAssembly(selectedAssembly.value);
+    } else if (level === 0) {
+        await loadAssemblies();
+    }
+}
+
 function goUp() {
-    if (browseLevel.value === 3) {
-        browseLevel.value = 2;
-    } else if (browseLevel.value === 2) {
-        browseLevel.value = 1;
-    } else if (browseLevel.value === 1) {
-        browseLevel.value = 0;
+    if (browseLevel.value > 0) {
+        void goToLevel((browseLevel.value - 1) as 0 | 1 | 2);
     }
 }
 
@@ -245,10 +261,6 @@ function breadcrumbs(): { name: string; level: 0 | 1 | 2 | 3 }[] {
         crumbs.push({ name: selectedType.value.name, level: 3 });
     }
     return crumbs;
-}
-
-function goToLevel(level: 0 | 1 | 2 | 3) {
-    browseLevel.value = level;
 }
 
 function selectMethod(method: BrowsedMethod) {

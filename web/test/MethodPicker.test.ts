@@ -150,7 +150,7 @@ describe('MethodPicker', () => {
         expect(wrapper.emitted('update:modelValue')).toEqual([[method]]);
     });
 
-    it('clicking an earlier breadcrumb goes back to that level without refetching it', async () => {
+    it('clicking an earlier breadcrumb re-fetches that level so it reflects the current filter', async () => {
         vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([
             assemblyEntry(),
         ]);
@@ -167,10 +167,14 @@ describe('MethodPicker', () => {
 
         const callsBefore = vi.mocked(fetchHotPatchAssemblies).mock.calls
             .length;
+        vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([
+            assemblyEntry({ name: 'MyPatch' }),
+        ]);
         await wrapper.find('.crumb').trigger('click');
+        await flushMicrotasks();
 
         expect(vi.mocked(fetchHotPatchAssemblies).mock.calls).toHaveLength(
-            callsBefore,
+            callsBefore + 1,
         );
         const rows = wrapper.findAll('.results li');
         expect(rows).toHaveLength(1);
@@ -204,9 +208,13 @@ describe('MethodPicker', () => {
         await wrapper.find('.results button').trigger('click');
         await flushMicrotasks();
 
+        vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([
+            assemblyEntry(),
+        ]);
         const upButton = wrapper.find('.toolbar button');
         expect(upButton.attributes('disabled')).toBeUndefined();
         await upButton.trigger('click');
+        await flushMicrotasks();
 
         const rows = wrapper.findAll('.results li');
         expect(rows).toHaveLength(1);
@@ -489,6 +497,56 @@ describe('MethodPicker', () => {
                 patchType: 'Postfix',
             },
         );
+    });
+
+    it('going up from a type after the target method changes shows the fresh type list, not the stale one', async () => {
+        vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([
+            assemblyEntry(),
+        ]);
+        const targetMethod = methodEntry();
+        const wrapper = mount(MethodPicker, {
+            props: {
+                path: null,
+                modelValue: null,
+                targetMethod,
+                patchType: 'Prefix' as const,
+            },
+        });
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchNamespaces).mockResolvedValueOnce([
+            namespaceEntry(),
+        ]);
+        await wrapper.find('.results button').trigger('click');
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchTypes).mockResolvedValueOnce([
+            typeEntry({ name: 'StaleType', fullName: 'MyPatch.Fixes.Stale' }),
+        ]);
+        await wrapper.find('.results button').trigger('click');
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchMethodsOfType).mockResolvedValue([]);
+        await wrapper.find('.results button').trigger('click');
+        await flushMicrotasks();
+
+        // The target method changes while browsing inside StaleType: it no longer has any
+        // compatible methods, but a different type in the same namespace now does.
+        vi.mocked(fetchHotPatchTypes).mockResolvedValueOnce([
+            typeEntry({ name: 'FreshType', fullName: 'MyPatch.Fixes.Fresh' }),
+        ]);
+        await wrapper.setProps({
+            targetMethod: methodEntry({ methodName: 'OtherMethod' }),
+        });
+        await flushMicrotasks();
+
+        await wrapper.find('.toolbar button').trigger('click');
+        await flushMicrotasks();
+
+        const rows = wrapper.findAll('.results li');
+        expect(rows).toHaveLength(1);
+        expect(rows[0].text()).toContain('FreshType');
+        expect(rows[0].text()).not.toContain('StaleType');
     });
 
     it('clicking Change after selecting a method drills back into the type it was chosen from', async () => {
