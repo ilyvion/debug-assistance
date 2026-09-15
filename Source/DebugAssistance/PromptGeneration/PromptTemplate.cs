@@ -1,16 +1,19 @@
 using System.Text;
 using DebugAssistance.Capture;
 using DebugAssistance.Decompilation;
+using DebugAssistance.Probes;
 
 namespace DebugAssistance.PromptGeneration;
 
-// Builds structured-Markdown "hand this to an AI agent" prompts from a single captured error:
-// a summary, the full raw stack trace annotated with each frame's resolved mod/assembly, then a
-// decompiled snippet per frame. Build ends on a blank heading for the player to fill in
-// themselves; BuildHotPatchPrompt ends on a concrete task pointing at a Hot Patch panel scaffolded
-// project instead. Both eagerly decompile every frame (unlike the on-demand per-frame decompile
-// routes) since the whole point of either button is one complete document assembled in a single
-// request, not a starting point the player then has to expand frame-by-frame themselves.
+// Builds structured-Markdown "hand this to an AI agent" prompts from a single captured error or
+// probe hit: a summary, the full raw stack trace annotated with each frame's resolved
+// mod/assembly, then a decompiled snippet per frame. Build(CapturedError) ends on a blank heading
+// for the player to fill in themselves; BuildHotPatchPrompt ends on a concrete task pointing at a
+// Hot Patch panel scaffolded project instead; Build(CapturedProbeHit) ends the same way as
+// Build(CapturedError) but opens on a probe-specific summary instead of an error one. All eagerly
+// decompile every frame (unlike the on-demand per-frame decompile routes) since the whole point of
+// any of these buttons is one complete document assembled in a single request, not a starting
+// point the player then has to expand frame-by-frame themselves.
 internal static class PromptTemplate
 {
     // Lines of decompiled source shown above and below the resolved highlight line — enough to see
@@ -24,7 +27,24 @@ internal static class PromptTemplate
 
         _ = sb.AppendLine("# RimWorld error report");
         _ = sb.AppendLine();
-        AppendReportBody(sb, error);
+        AppendErrorSummary(sb, error);
+        AppendStackTrace(sb, error.Frames);
+        AppendFrameDetails(sb, error.Frames);
+        _ = sb.AppendLine("## What I'd like help with");
+        _ = sb.AppendLine();
+
+        return sb.ToString();
+    }
+
+    internal static string Build(CapturedProbeHit hit)
+    {
+        var sb = new StringBuilder();
+
+        _ = sb.AppendLine("# RimWorld probe report");
+        _ = sb.AppendLine();
+        AppendProbeSummary(sb, hit);
+        AppendStackTrace(sb, hit.Frames);
+        AppendFrameDetails(sb, hit.Frames);
         _ = sb.AppendLine("## What I'd like help with");
         _ = sb.AppendLine();
 
@@ -45,17 +65,12 @@ internal static class PromptTemplate
 
         _ = sb.AppendLine("# DebugAssistance hot patch task");
         _ = sb.AppendLine();
-        AppendReportBody(sb, error);
+        AppendErrorSummary(sb, error);
+        AppendStackTrace(sb, error.Frames);
+        AppendFrameDetails(sb, error.Frames);
         AppendHotPatchTask(sb, projectDirectory, targetMethodDescription);
 
         return sb.ToString();
-    }
-
-    private static void AppendReportBody(StringBuilder sb, CapturedError error)
-    {
-        AppendErrorSummary(sb, error);
-        AppendStackTrace(sb, error);
-        AppendFrameDetails(sb, error);
     }
 
     private static void AppendHotPatchTask(
@@ -92,11 +107,23 @@ internal static class PromptTemplate
         _ = sb.AppendLine();
     }
 
-    private static void AppendStackTrace(StringBuilder sb, CapturedError error)
+    private static void AppendProbeSummary(StringBuilder sb, CapturedProbeHit hit)
+    {
+        _ = sb.AppendLine("## Probe");
+        _ = sb.AppendLine($"- **Target method:** `{hit.TargetDisplayName}`");
+        _ = sb.AppendLine(
+            $"- **Occurrences:** {hit.OccurrenceCount} (first {hit.FirstSeen:u}, last {hit.LastSeen:u})"
+        );
+        _ = sb.AppendLine();
+    }
+
+    // Shared by errors and probe hits alike — it only ever needs a frame list, which is
+    // shape-identical between CapturedError and CapturedProbeHit.
+    private static void AppendStackTrace(StringBuilder sb, IReadOnlyList<CapturedStackFrame> frames)
     {
         _ = sb.AppendLine("## Stack trace");
         _ = sb.AppendLine("```");
-        foreach (var frame in error.Frames)
+        foreach (var frame in frames)
         {
             _ = sb.AppendLine($"{frame.RawText} {FrameAnnotation(frame)}");
         }
@@ -113,18 +140,21 @@ internal static class PromptTemplate
         return $"[{modName}, {assemblyName}]";
     }
 
-    private static void AppendFrameDetails(StringBuilder sb, CapturedError error)
+    private static void AppendFrameDetails(
+        StringBuilder sb,
+        IReadOnlyList<CapturedStackFrame> frames
+    )
     {
-        if (error.Frames.Count == 0)
+        if (frames.Count == 0)
         {
             return;
         }
 
         _ = sb.AppendLine("## Frame details");
         _ = sb.AppendLine();
-        for (var i = 0; i < error.Frames.Count; i++)
+        for (var i = 0; i < frames.Count; i++)
         {
-            AppendFrameDetail(sb, i, error.Frames[i]);
+            AppendFrameDetail(sb, i, frames[i]);
         }
     }
 

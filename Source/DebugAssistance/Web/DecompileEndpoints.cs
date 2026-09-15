@@ -134,7 +134,9 @@ internal static class DecompileEndpoints
         return true;
     }
 
-    private static void WriteDecompileResult(HttpListenerContext ctx, DecompiledMethod result)
+    // Internal rather than private so ProbeDecompileEndpoints can reuse the exact same
+    // success/error JSON shaping for the probe-hit equivalents of these routes.
+    internal static void WriteDecompileResult(HttpListenerContext ctx, DecompiledMethod result)
     {
         if (result.Succeeded)
         {

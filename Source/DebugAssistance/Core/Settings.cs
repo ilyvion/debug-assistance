@@ -12,11 +12,14 @@ internal class Settings : ModSettings
     public int MaxCapturedEntries = Constants.DefaultMaxCapturedEntries;
     public bool ErrorCaptureEnabled = true;
     public bool IgnoreUnityOnlyErrors = true;
+    public long ProbeMaxInvocations = Constants.DefaultProbeMaxInvocations;
 
     private static string _portBuffer = DefaultPort.ToString(CultureInfo.InvariantCulture);
     private static string _maxCapturedEntriesBuffer = Constants.DefaultMaxCapturedEntries.ToString(
         CultureInfo.InvariantCulture
     );
+    private static string _probeMaxInvocationsBuffer =
+        Constants.DefaultProbeMaxInvocations.ToString(CultureInfo.InvariantCulture);
 
     public override void ExposeData()
     {
@@ -33,6 +36,11 @@ internal class Settings : ModSettings
         // Scribe key kept as "exceptionCaptureEnabled" so existing players' saved preference carries over.
         Scribe_Values.Look(ref ErrorCaptureEnabled, "exceptionCaptureEnabled", true);
         Scribe_Values.Look(ref IgnoreUnityOnlyErrors, "ignoreUnityOnlyErrors", true);
+        Scribe_Values.Look(
+            ref ProbeMaxInvocations,
+            "probeMaxInvocations",
+            Constants.DefaultProbeMaxInvocations
+        );
     }
 
     public static void DoSettingsWindowContents(Rect inRect)
@@ -134,6 +142,16 @@ internal class Settings : ModSettings
             ref _maxCapturedEntriesBuffer,
             1,
             1_000_000
+        );
+
+        listing.Gap();
+
+        listing.TextFieldNumericLabeled(
+            "DebugAssistance.Settings.ProbeMaxInvocations".Translate(),
+            ref settings.ProbeMaxInvocations,
+            ref _probeMaxInvocationsBuffer,
+            1,
+            10_000_000
         );
 
         listing.End();

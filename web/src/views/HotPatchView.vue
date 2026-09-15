@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 import {
+    addProbe,
     applyHotPatch,
     fetchActiveHotPatches,
+    fetchActiveProbes,
     fetchHotPatchDebugPrompt,
     fetchLoadedHotPatchAssemblies,
     fetchSuggestedScaffoldProjectName,
     loadHotPatchAssembly,
+    removeActiveProbe,
     removeHotPatch,
     removeManyHotPatches,
     scaffoldHotPatchProject,
 } from '../api';
 import FileBrowser from '../components/FileBrowser.vue';
 import MethodPicker from '../components/MethodPicker.vue';
+import PageHeader from '../components/PageHeader.vue';
 import { loadLastPath, saveLastPath } from '../lastPaths';
 import { settings } from '../settings';
 import { t } from '../translations';
 import type {
     ActivePatch,
+    ActiveProbe,
     BrowsedMethod,
     HarmonyPatchTypeName,
     LoadedAssemblyEntry,
@@ -35,8 +40,6 @@ const props = defineProps<{
     // button never renders at all (see the template below).
     dedupeKey?: string | null;
 }>();
-
-const emit = defineEmits<{ close: [] }>();
 
 function describeError(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
@@ -99,6 +102,72 @@ const activeError = ref<string | null>(null);
 const pendingRemove = ref<string | null>(null);
 const selectedPatchIds = ref<Set<string>>(new Set());
 const pendingBulkRemove = ref(false);
+
+const activeProbes = ref<ActiveProbe[]>([]);
+const activeProbesError = ref<string | null>(null);
+const addingProbe = ref(false);
+const addProbeError = ref<string | null>(null);
+const pendingRemoveProbe = ref<string | null>(null);
+
+const ACTIVE_PROBES_POLL_INTERVAL_MS = 3000;
+
+async function refreshActiveProbes() {
+    try {
+        activeProbes.value = await fetchActiveProbes();
+        activeProbesError.value = null;
+    } catch (err) {
+        activeProbesError.value = describeError(err);
+    }
+}
+
+let activeProbesPollHandle: number | undefined;
+
+onMounted(() => {
+    void refreshActiveProbes();
+    activeProbesPollHandle = window.setInterval(
+        () => void refreshActiveProbes(),
+        ACTIVE_PROBES_POLL_INTERVAL_MS,
+    );
+});
+
+onUnmounted(() => {
+    if (activeProbesPollHandle !== undefined) {
+        window.clearInterval(activeProbesPollHandle);
+    }
+});
+
+async function addProbeForTarget() {
+    if (!targetMethod.value) {
+        return;
+    }
+    addingProbe.value = true;
+    addProbeError.value = null;
+    try {
+        const result = await addProbe({
+            assemblyFullName: targetMethod.value.assemblyFullName,
+            metadataToken: targetMethod.value.metadataToken,
+        });
+        if (result.success) {
+            await refreshActiveProbes();
+        } else {
+            addProbeError.value = result.error ?? t('HotPatch.AddProbeFailed');
+        }
+    } catch (err) {
+        addProbeError.value = describeError(err);
+    } finally {
+        addingProbe.value = false;
+    }
+}
+
+async function removeProbe(id: string) {
+    try {
+        await removeActiveProbe(id);
+        pendingRemoveProbe.value = null;
+        await refreshActiveProbes();
+    } catch (err) {
+        activeProbesError.value = describeError(err);
+    }
+}
 
 const scaffoldDirectory = ref(loadLastPath('scaffold-directory'));
 watch(scaffoldDirectory, (value) => {
@@ -352,13 +421,9 @@ async function removeSelected() {
 
 <template>
     <div class="hotpatch-view">
-        <header class="hotpatch-header">
-            <button type="button" class="back" @click="emit('close')">
-                ← {{ t('HotPatch.Back') }}
-            </button>
-            <h2>{{ t('HotPatch.Title') }}</h2>
+        <PageHeader current="hotpatch" :title="t('HotPatch.Title')">
             <p class="warning">{{ t('HotPatch.NoSandboxWarning') }}</p>
-        </header>
+        </PageHeader>
 
         <div class="hotpatch-body">
             <aside class="active-patches-pane">
@@ -473,6 +538,69 @@ async function removeSelected() {
                             </li>
                         </ul>
                     </template>
+                </section>
+
+                <section class="active-probes-section">
+                    <h4>{{ t('HotPatch.ActiveProbesTitle') }}</h4>
+                    <p v-if="activeProbesError" class="status error">
+                        {{ activeProbesError }}
+                    </p>
+                    <p
+                        v-else-if="activeProbes.length === 0"
+                        class="status empty"
+                    >
+                        {{ t('HotPatch.NoActiveProbes') }}
+                    </p>
+                    <ul v-else class="active-probe-list">
+                        <li v-for="probe in activeProbes" :key="probe.id">
+                            <div class="active-probe-row">
+                                <div class="target">
+                                    {{ probe.targetDisplayName }}
+                                </div>
+                                <div class="probe-summary">
+                                    {{
+                                        t(
+                                            'HotPatch.ProbeSummary',
+                                            probe.totalInvocationCount,
+                                            probe.uniqueHitCount,
+                                        )
+                                    }}
+                                </div>
+                                <p
+                                    v-if="!probe.isActive"
+                                    class="status warning probe-capped"
+                                >
+                                    {{ t('HotPatch.ProbeCapReached') }}
+                                </p>
+                                <button
+                                    type="button"
+                                    class="remove-patch"
+                                    :title="t('HotPatch.StopProbe')"
+                                    @click="pendingRemoveProbe = probe.id"
+                                >
+                                    🗑
+                                </button>
+                            </div>
+                            <div
+                                v-if="pendingRemoveProbe === probe.id"
+                                class="confirm"
+                            >
+                                {{ t('HotPatch.StopProbeConfirm') }}
+                                <button
+                                    type="button"
+                                    @click="removeProbe(probe.id)"
+                                >
+                                    {{ t('HotPatch.Confirm') }}
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="pendingRemoveProbe = null"
+                                >
+                                    {{ t('HotPatch.Cancel') }}
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
                 </section>
             </aside>
 
@@ -693,6 +821,19 @@ async function removeSelected() {
                     <section class="method-pane target-method-section">
                         <h4>{{ t('HotPatch.TargetMethodSectionTitle') }}</h4>
                         <MethodPicker v-model="targetMethod" :path="null" />
+                        <button
+                            type="button"
+                            class="add-probe"
+                            :disabled="addingProbe || !targetMethod"
+                            :title="t('HotPatch.AddProbeTooltip')"
+                            @click="addProbeForTarget"
+                        >
+                            <span v-if="addingProbe" class="spinner" />
+                            {{ t('HotPatch.AddProbe') }}
+                        </button>
+                        <p v-if="addProbeError" class="status error">
+                            {{ addProbeError }}
+                        </p>
                     </section>
 
                     <div v-if="loadedPath" class="method-pane patch-pane">
@@ -777,27 +918,6 @@ async function removeSelected() {
     display: flex;
     flex-direction: column;
     height: 100vh;
-}
-
-.hotpatch-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-alt);
-}
-
-.hotpatch-header h2 {
-    margin: 0;
-    font-size: 15px;
-    white-space: nowrap;
-}
-
-.back {
-    border: none;
-    background: transparent;
-    white-space: nowrap;
 }
 
 .warning {
@@ -1131,5 +1251,58 @@ lines share the full remaining width on theirs. */
 .confirm.bulk {
     margin-top: 0;
     margin-bottom: 8px;
+}
+
+.add-probe {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.active-probes-section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.active-probe-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.active-probe-list li {
+    padding: 6px 0;
+    border-top: 1px solid var(--border);
+}
+
+.active-probe-list li:first-child {
+    border-top: none;
+}
+
+.active-probe-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.active-probe-row .target {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.probe-summary {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.probe-capped {
+    margin: 2px 0 0;
+    width: 100%;
 }
 </style>

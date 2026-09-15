@@ -1,5 +1,7 @@
 import type {
     ActivePatch,
+    ActiveProbe,
+    AddProbeResult,
     ApplyPatchResult,
     AssemblyEntry,
     BrowsedMethod,
@@ -14,6 +16,8 @@ import type {
     MethodRef,
     ModSettings,
     NamespaceEntry,
+    ProbeDetail,
+    ProbeListEntry,
     SaveFileEntry,
     ScaffoldResult,
     SuggestedProjectName,
@@ -432,6 +436,103 @@ export async function fetchActiveHotPatches(): Promise<ActivePatch[]> {
         '/api/hotpatch/active',
     );
     return data.patches;
+}
+
+export async function fetchActiveProbes(): Promise<ActiveProbe[]> {
+    const data = await getJson<{ probes: ActiveProbe[] }>('/api/probes/active');
+    return data.probes;
+}
+
+export async function addProbe(target: MethodRef): Promise<AddProbeResult> {
+    return postJson('/api/probes/active', { target });
+}
+
+export async function removeActiveProbe(
+    id: string,
+): Promise<{ removed: boolean }> {
+    const res = await fetch(`/api/probes/active/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+    });
+    const body = await parseJson<{ removed: boolean }>(res);
+    if (!res.ok) {
+        throw new ApiError(
+            body.error ?? `Request failed (${String(res.status)})`,
+            res.status,
+        );
+    }
+    return body;
+}
+
+export async function fetchProbes(): Promise<ProbeListEntry[]> {
+    const data = await getJson<{ probes: ProbeListEntry[] }>('/api/probes');
+    return data.probes;
+}
+
+export async function fetchProbeDetail(
+    dedupeKey: string,
+): Promise<ProbeDetail> {
+    return getJson<ProbeDetail>(`/api/probes/${encodeURIComponent(dedupeKey)}`);
+}
+
+export async function removeProbeHit(dedupeKey: string): Promise<void> {
+    const res = await fetch(`/api/probes/${encodeURIComponent(dedupeKey)}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) {
+        const body = await parseJson<object>(res);
+        throw new ApiError(
+            body.error ?? `Request failed (${String(res.status)})`,
+            res.status,
+        );
+    }
+}
+
+export async function clearProbes(): Promise<{ clearedCount: number }> {
+    const res = await fetch('/api/probes', { method: 'DELETE' });
+    const body = await parseJson<{ clearedCount: number }>(res);
+    if (!res.ok) {
+        throw new ApiError(
+            body.error ?? `Request failed (${String(res.status)})`,
+            res.status,
+        );
+    }
+    return body;
+}
+
+export async function decompileProbeFrame(
+    dedupeKey: string,
+    frameIndex: number,
+    patched: boolean,
+): Promise<DecompileResult> {
+    const action = patched ? 'decompile-patched' : 'decompile';
+    return postForResult<DecompileResult>(
+        `/api/probes/${encodeURIComponent(dedupeKey)}/frames/${String(frameIndex)}/${action}`,
+    );
+}
+
+export async function decompileProbePatch(
+    dedupeKey: string,
+    frameIndex: number,
+    patchIndex: number,
+): Promise<DecompileResult> {
+    return postForResult<DecompileResult>(
+        `/api/probes/${encodeURIComponent(dedupeKey)}/frames/${String(frameIndex)}/patches/${String(patchIndex)}/decompile`,
+    );
+}
+
+export async function fetchProbeAiPrompt(dedupeKey: string): Promise<string> {
+    const res = await fetch(
+        `/api/probes/${encodeURIComponent(dedupeKey)}/ai-prompt`,
+        { method: 'POST' },
+    );
+    const body = await parseJson<{ prompt: string }>(res);
+    if (!res.ok) {
+        throw new ApiError(
+            body.error ?? `Request failed (${String(res.status)})`,
+            res.status,
+        );
+    }
+    return body.prompt;
 }
 
 export async function checkAlive(): Promise<boolean> {

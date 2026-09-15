@@ -1,5 +1,6 @@
 using DebugAssistance.Capture;
 using DebugAssistance.HotPatch;
+using DebugAssistance.Probes;
 using DebugAssistance.Web;
 
 [assembly: InternalsVisibleTo("DebugAssistance.Tests")]
@@ -11,6 +12,12 @@ internal partial class DebugAssistanceMod
     internal static CaptureStore CaptureStore { get; } = new();
 
     internal static HotPatchManager HotPatchManager { get; } = new();
+
+    // Declared before ProbeManager so its default constructor (which reads this property) sees it
+    // already initialized.
+    internal static ProbeHitStore ProbeHitStore { get; } = new();
+
+    internal static ProbeManager ProbeManager { get; } = new();
 
     internal static LiveAssemblyLoader LiveAssemblyLoader { get; } = new();
 

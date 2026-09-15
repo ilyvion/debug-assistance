@@ -8,8 +8,9 @@ namespace DebugAssistance.Web;
 // ASP.NET/Kestrel dependency): static files under siteFolder (the built web/ frontend) for
 // anything under GET that isn't an API route, plus JSON routes under /api/ dispatched out to a
 // static endpoint class per feature area (ErrorsEndpoints, DecompileEndpoints, SavesEndpoints,
-// FileBrowserEndpoints, SettingsEndpoint) so each route's handling logic sits alongside the rest
-// of that feature's code rather than all in one file.
+// FileBrowserEndpoints, SettingsEndpoint, ProbesEndpoints, ProbeDecompileEndpoints) so each
+// route's handling logic sits alongside the rest of that feature's code rather than all in one
+// file.
 [HotSwappable]
 internal sealed class DebugAssistanceServer(
     int port,
@@ -141,6 +142,9 @@ internal sealed class DebugAssistanceServer(
             },
             ("hotpatch", 4) when parts[2] == "scaffold" && parts[3] == "suggested-name" =>
                 HotPatchEndpoints.ServeSuggestScaffoldName(ctx),
+            ("probes", 2) => ProbesEndpoints.ServeProbeList(ctx),
+            ("probes", 3) when parts[2] == "active" => ProbesEndpoints.ServeActiveProbes(ctx),
+            ("probes", 3) => ProbesEndpoints.ServeProbeDetail(ctx, parts[2]),
             _ => WriteNotFound(ctx),
         };
 
@@ -212,6 +216,18 @@ internal sealed class DebugAssistanceServer(
             ),
             ("hotpatch", _, _, 3) when parts[2] == "debug-prompt" =>
                 PromptEndpoints.ServeHotPatchDebugPrompt(ctx),
+            ("probes", _, _, 3) when parts[2] == "active" => ProbesEndpoints.ServeAddProbe(ctx),
+            ("probes", "frames", "decompile", 6) => ProbeDecompileEndpoints.ServeDecompileFrame(
+                ctx,
+                parts[2],
+                parts[4],
+                patched: false
+            ),
+            ("probes", "frames", "decompile-patched", 6) =>
+                ProbeDecompileEndpoints.ServeDecompileFrame(ctx, parts[2], parts[4], patched: true),
+            ("probes", "frames", "patches", 8) when parts[7] == "decompile" =>
+                ProbeDecompileEndpoints.ServeDecompilePatch(ctx, parts[2], parts[4], parts[6]),
+            ("probes", "ai-prompt", null, 4) => ProbesEndpoints.ServeProbeAiPrompt(ctx, parts[2]),
             _ => WriteNotFound(ctx),
         };
 
@@ -221,6 +237,12 @@ internal sealed class DebugAssistanceServer(
             ("errors", 2) => ErrorsEndpoints.ServeClearErrors(ctx),
             ("errors", 3) => ErrorsEndpoints.ServeDeleteError(ctx, parts[2]),
             ("saves", 3) => SavesEndpoints.ServeDeleteSave(ctx, parts[2]),
+            ("probes", 2) => ProbesEndpoints.ServeClearProbes(ctx),
+            ("probes", 4) when parts[2] == "active" => ProbesEndpoints.ServeRemoveActiveProbe(
+                ctx,
+                parts[3]
+            ),
+            ("probes", 3) => ProbesEndpoints.ServeDeleteProbeHit(ctx, parts[2]),
             _ => WriteNotFound(ctx),
         };
 

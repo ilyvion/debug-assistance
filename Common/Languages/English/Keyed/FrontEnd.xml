@@ -2,6 +2,7 @@
 <LanguageData>
     <DebugAssistance.FrontEnd.Common.Unresolved>unresolved</DebugAssistance.FrontEnd.Common.Unresolved>
 
+    <DebugAssistance.FrontEnd.App.ErrorsTitle>Errors</DebugAssistance.FrontEnd.App.ErrorsTitle>
     <DebugAssistance.FrontEnd.App.FilterPlaceholder>Filter errors…</DebugAssistance.FrontEnd.App.FilterPlaceholder>
     <DebugAssistance.FrontEnd.App.ServerUnreachable>Server unreachable</DebugAssistance.FrontEnd.App.ServerUnreachable>
     <DebugAssistance.FrontEnd.App.SelectErrorPlaceholder>Select an error from the list to see its details.</DebugAssistance.FrontEnd.App.SelectErrorPlaceholder>
@@ -49,6 +50,10 @@
     <DebugAssistance.FrontEnd.FrameRow.TooltipPatchKind>Patch kind: {0}</DebugAssistance.FrontEnd.FrameRow.TooltipPatchKind>
     <DebugAssistance.FrontEnd.FrameRow.PatchThisMethod>Patch this method</DebugAssistance.FrontEnd.FrameRow.PatchThisMethod>
     <DebugAssistance.FrontEnd.FrameRow.PatchThisMethodUnavailable>This frame's method can't be resolved for patching (unresolved reference, or its assembly isn't currently loaded).</DebugAssistance.FrontEnd.FrameRow.PatchThisMethodUnavailable>
+    <DebugAssistance.FrontEnd.FrameRow.ProbeThisMethod>Probe this method</DebugAssistance.FrontEnd.FrameRow.ProbeThisMethod>
+    <DebugAssistance.FrontEnd.FrameRow.ProbeThisMethodUnavailable>This frame's method can't be resolved for probing (unresolved reference, or its assembly isn't currently loaded).</DebugAssistance.FrontEnd.FrameRow.ProbeThisMethodUnavailable>
+    <DebugAssistance.FrontEnd.FrameRow.ProbeAdded>Probe added — see it on the Hot Patch view's Active probes panel.</DebugAssistance.FrontEnd.FrameRow.ProbeAdded>
+    <DebugAssistance.FrontEnd.FrameRow.ProbeFailed>Couldn't add probe: {0}</DebugAssistance.FrontEnd.FrameRow.ProbeFailed>
 
     <DebugAssistance.FrontEnd.SaveLoad.Title>Save / Load</DebugAssistance.FrontEnd.SaveLoad.Title>
     <DebugAssistance.FrontEnd.SaveLoad.SaveAsLabel>Save current captures as</DebugAssistance.FrontEnd.SaveLoad.SaveAsLabel>
@@ -82,7 +87,6 @@
     <DebugAssistance.FrontEnd.FileBrowser.Go>Go</DebugAssistance.FrontEnd.FileBrowser.Go>
 
     <DebugAssistance.FrontEnd.HotPatch.Title>Hot Patch</DebugAssistance.FrontEnd.HotPatch.Title>
-    <DebugAssistance.FrontEnd.HotPatch.Back>Back</DebugAssistance.FrontEnd.HotPatch.Back>
     <DebugAssistance.FrontEnd.HotPatch.NoSandboxWarning>There is no sandboxing: a bug in your patch can crash or corrupt the game exactly like a bug in any other Harmony patch.</DebugAssistance.FrontEnd.HotPatch.NoSandboxWarning>
     <DebugAssistance.FrontEnd.HotPatch.ReplaceWarning>Replace completely skips the target method's own body and runs the replacement method instead. The replacement must have the exact same parameters and return type as the target (and be static if and only if the target is).</DebugAssistance.FrontEnd.HotPatch.ReplaceWarning>
     <DebugAssistance.FrontEnd.HotPatch.AssemblySectionTitle>Patch assembly</DebugAssistance.FrontEnd.HotPatch.AssemblySectionTitle>
@@ -134,4 +138,39 @@
     <DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptNeedsScaffold>Generate a patch project above first.</DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptNeedsScaffold>
     <DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptCopied>Copied to clipboard.</DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptCopied>
     <DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptFailed>Could not copy the debug prompt: {0}</DebugAssistance.FrontEnd.HotPatch.CopyDebugPromptFailed>
+    <DebugAssistance.FrontEnd.HotPatch.AddProbe>Add probe</DebugAssistance.FrontEnd.HotPatch.AddProbe>
+    <DebugAssistance.FrontEnd.HotPatch.AddProbeTooltip>Track every unique call stack that invokes the target method above, without needing an error to happen.</DebugAssistance.FrontEnd.HotPatch.AddProbeTooltip>
+    <DebugAssistance.FrontEnd.HotPatch.AddProbeFailed>Adding the probe failed.</DebugAssistance.FrontEnd.HotPatch.AddProbeFailed>
+    <DebugAssistance.FrontEnd.HotPatch.ActiveProbesTitle>Active probes</DebugAssistance.FrontEnd.HotPatch.ActiveProbesTitle>
+    <DebugAssistance.FrontEnd.HotPatch.NoActiveProbes>No probes are currently active.</DebugAssistance.FrontEnd.HotPatch.NoActiveProbes>
+    <DebugAssistance.FrontEnd.HotPatch.ProbeSummary>{0} call(s) · {1} unique</DebugAssistance.FrontEnd.HotPatch.ProbeSummary>
+    <DebugAssistance.FrontEnd.HotPatch.ProbeCapReached>Stopped automatically after reaching its invocation cap.</DebugAssistance.FrontEnd.HotPatch.ProbeCapReached>
+    <DebugAssistance.FrontEnd.HotPatch.StopProbe>Stop</DebugAssistance.FrontEnd.HotPatch.StopProbe>
+    <DebugAssistance.FrontEnd.HotPatch.StopProbeConfirm>Stop this probe? Its already-captured hits are kept in the Probes list.</DebugAssistance.FrontEnd.HotPatch.StopProbeConfirm>
+
+    <DebugAssistance.FrontEnd.Probes.Title>Probes</DebugAssistance.FrontEnd.Probes.Title>
+    <DebugAssistance.FrontEnd.Probes.FilterPlaceholder>Filter probes…</DebugAssistance.FrontEnd.Probes.FilterPlaceholder>
+    <DebugAssistance.FrontEnd.Probes.SelectPlaceholder>Select a probe hit from the list to see its details.</DebugAssistance.FrontEnd.Probes.SelectPlaceholder>
+
+    <DebugAssistance.FrontEnd.ProbeList.Empty>No probe hits have been captured yet.</DebugAssistance.FrontEnd.ProbeList.Empty>
+    <DebugAssistance.FrontEnd.ProbeList.NoMatches>No matches.</DebugAssistance.FrontEnd.ProbeList.NoMatches>
+    <DebugAssistance.FrontEnd.ProbeList.EntrySummary>{0} · ×{1} · last seen {2}</DebugAssistance.FrontEnd.ProbeList.EntrySummary>
+    <DebugAssistance.FrontEnd.ProbeList.DismissTooltip>Dismiss this probe hit.</DebugAssistance.FrontEnd.ProbeList.DismissTooltip>
+    <DebugAssistance.FrontEnd.ProbeList.ClearAll>Clear all</DebugAssistance.FrontEnd.ProbeList.ClearAll>
+    <DebugAssistance.FrontEnd.ProbeList.ClearAllConfirm>Dismiss all {0} captured probe hit(s)? This cannot be undone.</DebugAssistance.FrontEnd.ProbeList.ClearAllConfirm>
+    <DebugAssistance.FrontEnd.ProbeList.Confirm>Confirm</DebugAssistance.FrontEnd.ProbeList.Confirm>
+    <DebugAssistance.FrontEnd.ProbeList.Cancel>Cancel</DebugAssistance.FrontEnd.ProbeList.Cancel>
+
+    <DebugAssistance.FrontEnd.ProbeDetail.SeenSummary>Seen {0} time(s) — first {1}, last {2}</DebugAssistance.FrontEnd.ProbeDetail.SeenSummary>
+    <DebugAssistance.FrontEnd.ProbeDetail.DecompileAll>Decompile all</DebugAssistance.FrontEnd.ProbeDetail.DecompileAll>
+    <DebugAssistance.FrontEnd.ProbeDetail.DecompilingAllProgress>Decompiling… ({0} / {1})</DebugAssistance.FrontEnd.ProbeDetail.DecompilingAllProgress>
+    <DebugAssistance.FrontEnd.ProbeDetail.ShowStackTrace>Show raw stack trace</DebugAssistance.FrontEnd.ProbeDetail.ShowStackTrace>
+    <DebugAssistance.FrontEnd.ProbeDetail.HideStackTrace>Hide raw stack trace</DebugAssistance.FrontEnd.ProbeDetail.HideStackTrace>
+    <DebugAssistance.FrontEnd.ProbeDetail.CopyStackTrace>Copy raw stack trace</DebugAssistance.FrontEnd.ProbeDetail.CopyStackTrace>
+    <DebugAssistance.FrontEnd.ProbeDetail.CopyStackTraceCopied>Copied to clipboard.</DebugAssistance.FrontEnd.ProbeDetail.CopyStackTraceCopied>
+    <DebugAssistance.FrontEnd.ProbeDetail.CopyStackTraceFailed>Could not copy the stack trace: {0}</DebugAssistance.FrontEnd.ProbeDetail.CopyStackTraceFailed>
+    <DebugAssistance.FrontEnd.ProbeDetail.CopyAiPrompt>Generate and copy AI prompt</DebugAssistance.FrontEnd.ProbeDetail.CopyAiPrompt>
+    <DebugAssistance.FrontEnd.ProbeDetail.CopyAiPromptTooltip>Copy a Markdown-formatted description of this probe hit, including decompiled source snippets, to hand to an AI agent.</DebugAssistance.FrontEnd.ProbeDetail.CopyAiPromptTooltip>
+    <DebugAssistance.FrontEnd.ProbeDetail.CopyAiPromptCopied>Copied to clipboard.</DebugAssistance.FrontEnd.ProbeDetail.CopyAiPromptCopied>
+    <DebugAssistance.FrontEnd.ProbeDetail.CopyAiPromptFailed>Could not copy the AI prompt: {0}</DebugAssistance.FrontEnd.ProbeDetail.CopyAiPromptFailed>
 </LanguageData>

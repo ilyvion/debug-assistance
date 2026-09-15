@@ -2,10 +2,13 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+    addProbe,
     decompileCauseFrame,
     decompileCausePatch,
     decompileFrame,
     decompilePatch,
+    decompileProbeFrame,
+    decompileProbePatch,
 } from '../src/api';
 import CodePanel from '../src/components/CodePanel.vue';
 import FrameRow from '../src/components/FrameRow.vue';
@@ -16,6 +19,9 @@ vi.mock('../src/api', () => ({
     decompilePatch: vi.fn(),
     decompileCauseFrame: vi.fn(),
     decompileCausePatch: vi.fn(),
+    decompileProbeFrame: vi.fn(),
+    decompileProbePatch: vi.fn(),
+    addProbe: vi.fn(),
 }));
 
 function frameWithPatches(): FrameInfo {
@@ -211,6 +217,73 @@ describe('FrameRow', () => {
         expect(wrapper.emitted('patch-this-method')).toEqual([[target]]);
     });
 
+    it('disables "Probe this method" when the frame has no resolvable patch target', () => {
+        const wrapper = mount(FrameRow, {
+            props: { dedupeKey: 'key', frame: frameWithPatches() },
+        });
+
+        const button = wrapper.find('.probe-this-method');
+        expect(button.attributes('disabled')).toBeDefined();
+    });
+
+    it("adds a probe for the frame's resolved target when clicked, and shows the result", async () => {
+        const target = patchTargetFixture();
+        vi.mocked(addProbe).mockResolvedValue({
+            success: true,
+            probe: {
+                id: 'probe-1',
+                targetDeclaringTypeName: target.declaringTypeName,
+                targetMethodName: target.methodName,
+                targetDisplayName: target.signature,
+                appliedAt: '2026-01-01T00:00:00Z',
+                totalInvocationCount: 0,
+                uniqueHitCount: 0,
+                isActive: true,
+                capReason: 'None',
+            },
+        });
+        const wrapper = mount(FrameRow, {
+            props: {
+                dedupeKey: 'key',
+                frame: { ...frameWithPatches(), patchTarget: target },
+            },
+        });
+
+        const button = wrapper.find('.probe-this-method');
+        expect(button.attributes('disabled')).toBeUndefined();
+        await button.trigger('click');
+        await flushMicrotasks();
+
+        expect(addProbe).toHaveBeenCalledWith({
+            assemblyFullName: target.assemblyFullName,
+            metadataToken: target.metadataToken,
+        });
+        expect(wrapper.find('.probe-status').text()).toContain(
+            'FrameRow.ProbeAdded',
+        );
+    });
+
+    it('shows an error when adding a probe for the frame fails', async () => {
+        const target = patchTargetFixture();
+        vi.mocked(addProbe).mockResolvedValue({
+            success: false,
+            error: 'boom',
+        });
+        const wrapper = mount(FrameRow, {
+            props: {
+                dedupeKey: 'key',
+                frame: { ...frameWithPatches(), patchTarget: target },
+            },
+        });
+
+        await wrapper.find('.probe-this-method').trigger('click');
+        await flushMicrotasks();
+
+        expect(wrapper.find('.probe-status.error').text()).toContain(
+            'FrameRow.ProbeFailed',
+        );
+    });
+
     it('shows the fully qualified type and method name in the row label', () => {
         const wrapper = mount(FrameRow, {
             props: { dedupeKey: 'key', frame: frameWithPatches() },
@@ -283,6 +356,32 @@ describe('FrameRow', () => {
         expect(decompileCauseFrame).toHaveBeenCalledWith('key', 2, 0, true);
         expect(decompileCausePatch).toHaveBeenCalledWith('key', 2, 0, 0);
         expect(decompileCausePatch).toHaveBeenCalledWith('key', 2, 0, 1);
+    });
+
+    it('routes decompile requests to the probe endpoints when kind is "probe"', async () => {
+        vi.mocked(decompileProbeFrame).mockResolvedValue({
+            code: 'original',
+            highlightLine: null,
+        });
+        vi.mocked(decompileProbePatch).mockResolvedValue({
+            code: 'patch',
+            highlightLine: null,
+        });
+
+        const wrapper = mount(FrameRow, {
+            props: {
+                dedupeKey: 'key',
+                frame: frameWithPatches(),
+                kind: 'probe',
+            },
+        });
+
+        await wrapper.vm.decompileAllForFrame();
+
+        expect(decompileProbeFrame).toHaveBeenCalledWith('key', 0, false);
+        expect(decompileProbeFrame).toHaveBeenCalledWith('key', 0, true);
+        expect(decompileProbePatch).toHaveBeenCalledWith('key', 0, 0);
+        expect(decompileProbePatch).toHaveBeenCalledWith('key', 0, 1);
     });
 
     it('falls back to the raw stack trace text when the frame has no resolved name', () => {

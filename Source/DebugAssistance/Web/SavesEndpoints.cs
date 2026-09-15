@@ -6,7 +6,9 @@ namespace DebugAssistance.Web;
 
 // GET /api/saves, POST /api/saves, POST /api/saves/{fileName}/load and DELETE /api/saves/{fileName}:
 // listing, saving, loading (merge or replace), and deleting captured-error save files, via
-// CaptureFileIO and DebugAssistanceMod.CaptureStore.
+// CaptureFileIO and DebugAssistanceMod.CaptureStore. Every save/load/delete also carries captured
+// probe hits along in a companion ProbeFileIO file under the same base file name, so probe hits
+// survive save/load the same way captured errors do without needing a save flow of their own.
 internal static class SavesEndpoints
 {
     internal static bool ServeSavesList(HttpListenerContext ctx)
@@ -52,6 +54,7 @@ internal static class SavesEndpoints
         {
             var snapshot = DebugAssistanceMod.CaptureStore.Snapshot();
             CaptureFileIO.Save(snapshot, fileName);
+            ProbeFileIO.Save(DebugAssistanceMod.ProbeHitStore.Snapshot(), fileName);
             ctx.Response.WriteJson(new SaveCaptureResultDto { OccurrenceCount = snapshot.Count });
             return true;
         }
@@ -93,6 +96,22 @@ internal static class SavesEndpoints
                 DebugAssistanceMod.CaptureStore.Merge(loaded);
             }
 
+            // The companion probes file is a later addition, so an older save made before probes
+            // existed simply has none — nothing to load, not an error.
+            var probesPath = ProbeFileIO.FilePathFor(fileName);
+            if (File.Exists(probesPath))
+            {
+                var loadedProbeHits = ProbeFileIO.Load(probesPath);
+                if (mode == "replace")
+                {
+                    DebugAssistanceMod.ProbeHitStore.Replace(loadedProbeHits);
+                }
+                else
+                {
+                    DebugAssistanceMod.ProbeHitStore.Merge(loadedProbeHits);
+                }
+            }
+
             ctx.Response.WriteJson(new LoadCaptureResultDto { LoadedCount = loaded.Count });
             return true;
         }
@@ -117,6 +136,13 @@ internal static class SavesEndpoints
         }
 
         File.Delete(path);
+
+        var probesPath = ProbeFileIO.FilePathFor(fileName);
+        if (File.Exists(probesPath))
+        {
+            File.Delete(probesPath);
+        }
+
         ctx.Response.WriteJson(new DeleteResultDto { Deleted = true });
         return true;
     }

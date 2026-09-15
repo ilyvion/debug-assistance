@@ -2,36 +2,23 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { checkAlive, clearErrors, deleteError, fetchErrors } from '../api';
-import ErrorDetail from '../components/ErrorDetail.vue';
-import ErrorList from '../components/ErrorList.vue';
+import { checkAlive, clearProbes, fetchProbes, removeProbeHit } from '../api';
 import PageHeader from '../components/PageHeader.vue';
-import SaveLoadDialog from '../components/SaveLoadDialog.vue';
+import ProbeDetail from '../components/ProbeDetail.vue';
+import ProbeList from '../components/ProbeList.vue';
 import { setPendingHotPatchTarget } from '../hotPatchNav';
-import {
-    type InspectedCounts,
-    withAllInspected,
-    withInspected,
-    withoutInspected,
-} from '../inspected';
 import { t } from '../translations';
-import type { BrowsedMethod, ErrorListEntry } from '../types';
+import type { BrowsedMethod, ProbeListEntry } from '../types';
 
 const POLL_INTERVAL_MS = 3000;
 
 const router = useRouter();
 
-const entries = ref<ErrorListEntry[]>([]);
+const entries = ref<ProbeListEntry[]>([]);
 const filterText = ref('');
 const selectedKey = ref<string | null>(null);
-// Occurrence count each error had the last time it was looked at; in-memory only, see
-// inspected.ts. Drives ErrorList's unread highlight.
-const inspectedCounts = ref<InspectedCounts>({});
 const alive = ref(true);
-const showSaveLoad = ref(false);
 
-// A frame's own "Patch this method" action pre-fills the target from that frame's resolved
-// method, unlike the from-scratch entry point NavTabs' Hot Patch tab uses.
 function openHotPatchForFrame(method: BrowsedMethod, dedupeKey: string) {
     setPendingHotPatchTarget(method, dedupeKey);
     void router.push('/hotpatch');
@@ -41,19 +28,8 @@ let pollHandle: number | undefined;
 
 async function poll() {
     try {
-        entries.value = await fetchErrors();
+        entries.value = await fetchProbes();
         alive.value = true;
-        // Keep the selected entry from re-flagging itself as unread while it's the one actually
-        // being looked at, e.g. if it receives a new duplicate while its detail pane is open.
-        const selected = entries.value.find(
-            (entry) => entry.dedupeKey === selectedKey.value,
-        );
-        if (selected) {
-            inspectedCounts.value = withInspected(
-                inspectedCounts.value,
-                selected,
-            );
-        }
     } catch {
         alive.value = await checkAlive();
     }
@@ -61,17 +37,6 @@ async function poll() {
 
 function onSelect(dedupeKey: string) {
     selectedKey.value = dedupeKey;
-    const entry = entries.value.find((e) => e.dedupeKey === dedupeKey);
-    if (entry) {
-        inspectedCounts.value = withInspected(inspectedCounts.value, entry);
-    }
-}
-
-function onMarkAllSeen() {
-    inspectedCounts.value = withAllInspected(
-        inspectedCounts.value,
-        entries.value,
-    );
 }
 
 onMounted(() => {
@@ -85,89 +50,69 @@ onUnmounted(() => {
     }
 });
 
-function onLoaded() {
-    selectedKey.value = null;
-    showSaveLoad.value = false;
-    void poll();
-}
-
 async function onDismiss(dedupeKey: string) {
     try {
-        await deleteError(dedupeKey);
+        await removeProbeHit(dedupeKey);
         if (selectedKey.value === dedupeKey) {
             selectedKey.value = null;
         }
     } catch {
         // entry may already be gone; the poll below resyncs the list either way
     }
-    // Drop any recorded inspection count so a dedupeKey that later reappears (a fresh
-    // occurrence after dismissal) isn't wrongly suppressed by a stale, now-unrelated count.
-    inspectedCounts.value = withoutInspected(inspectedCounts.value, dedupeKey);
     await poll();
 }
 
 async function onClearAll() {
     try {
-        await clearErrors();
+        await clearProbes();
     } catch {
         // resynced by the poll below regardless
     }
     selectedKey.value = null;
-    inspectedCounts.value = {};
     await poll();
 }
 </script>
 
 <template>
-    <div class="app">
-        <PageHeader current="errors" :title="t('App.ErrorsTitle')">
+    <div class="probes-view">
+        <PageHeader current="probes" :title="t('Probes.Title')">
             <input
                 v-model="filterText"
                 type="search"
                 class="filter-input"
-                :placeholder="t('App.FilterPlaceholder')"
+                :placeholder="t('Probes.FilterPlaceholder')"
             />
             <span v-if="!alive" class="offline">{{
                 t('App.ServerUnreachable')
             }}</span>
-            <button @click="showSaveLoad = true">
-                {{ t('SaveLoad.Title') }}
-            </button>
         </PageHeader>
         <main class="content">
             <div class="list-pane">
-                <ErrorList
+                <ProbeList
                     :entries="entries"
                     :filter-text="filterText"
                     :selected-key="selectedKey"
-                    :inspected-counts="inspectedCounts"
                     @select="onSelect"
                     @dismiss="onDismiss"
                     @clear-all="onClearAll"
-                    @mark-all-seen="onMarkAllSeen"
                 />
             </div>
             <div class="detail-pane">
-                <ErrorDetail
+                <ProbeDetail
                     v-if="selectedKey"
                     :dedupe-key="selectedKey"
                     @patch-this-method="openHotPatchForFrame"
                 />
                 <p v-else class="placeholder">
-                    {{ t('App.SelectErrorPlaceholder') }}
+                    {{ t('Probes.SelectPlaceholder') }}
                 </p>
             </div>
         </main>
-        <SaveLoadDialog
-            v-if="showSaveLoad"
-            @close="showSaveLoad = false"
-            @loaded="onLoaded"
-        />
     </div>
 </template>
 
 <style scoped>
-.app {
+.probes-view {
     display: flex;
     flex-direction: column;
     height: 100vh;

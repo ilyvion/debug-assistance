@@ -118,7 +118,7 @@ internal static class LogCaptureHook
             }
             else if (pending is { } p)
             {
-                frames = BuildFramesFromLiveCapture(p.Frames, p.RawText);
+                frames = LiveStackFrameBuilder.BuildFrames(p.Frames, p.RawText);
                 rawStackTrace = p.RawText;
             }
             else
@@ -197,7 +197,7 @@ internal static class LogCaptureHook
             raw.ErrorTypeName,
             raw.Message,
             raw.RawText,
-            BuildFramesFromLiveCapture(raw.Frames, raw.RawText),
+            LiveStackFrameBuilder.BuildFrames(raw.Frames, raw.RawText),
             timestamp,
             [.. raw.InnerCauses.Select(BuildCauseFromRaw)]
         );
@@ -207,53 +207,8 @@ internal static class LogCaptureHook
             raw.ErrorTypeName,
             raw.Message,
             raw.RawText,
-            BuildFramesFromLiveCapture(raw.Frames, raw.RawText)
+            LiveStackFrameBuilder.BuildFrames(raw.Frames, raw.RawText)
         );
-
-    // raw.RawText is StackTrace.ToString(), which renders one line per frame in the same order as
-    // the frames themselves — pairing them by index gives each frame the exact text
-    // Environment.GetStackTrace(Exception, bool) itself would have produced. A count mismatch
-    // (frames filtered out via [StackTraceHidden], say) falls back to StackFrame.ToString()'s
-    // differently-formatted text rather than pairing the wrong line to the wrong frame.
-    private static List<CapturedStackFrame> BuildFramesFromLiveCapture(
-        StackFrame[] frames,
-        string rawText
-    )
-    {
-        var rawLines = SplitFrameLines(rawText, frames.Length);
-        return [.. frames.Select((frame, i) => BuildFrameFromLive(frame, rawLines?[i]))];
-    }
-
-    private static string[]? SplitFrameLines(string rawText, int expectedCount)
-    {
-        var lines = rawText
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Split('\n')
-            .Where(line => line.Length > 0)
-            .ToArray();
-        return lines.Length == expectedCount ? lines : null;
-    }
-
-    private static CapturedStackFrame BuildFrameFromLive(StackFrame stackFrame, string? rawText)
-    {
-        var method = stackFrame.GetMethod();
-        // GetFileLineNumber()/GetFileColumnNumber() return 0, not a real position, when the frame
-        // has no PDB info.
-        var lineNumber = stackFrame.GetFileLineNumber();
-        var columnNumber = stackFrame.GetFileColumnNumber();
-        var ilOffset = stackFrame.GetILOffset();
-        var frame = new CapturedStackFrame(
-            rawText ?? stackFrame.ToString(),
-            method?.DeclaringType?.FullName,
-            method?.Name,
-            stackFrame.GetFileName(),
-            lineNumber == 0 ? null : lineNumber,
-            columnNumber == 0 ? null : columnNumber,
-            ilOffset == StackFrame.OFFSET_UNKNOWN ? null : ilOffset
-        );
-        FrameModResolver.ResolveLiveFrame(frame, stackFrame);
-        return frame;
-    }
 
     private static CapturedError BuildFromLogText(string logText, DateTime timestamp)
     {

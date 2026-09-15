@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { consumePendingHotPatchTarget } from './hotPatchNav';
 import HotPatchView from './views/HotPatchView.vue';
 import MainView from './views/MainView.vue';
+import ProbesView from './views/ProbesView.vue';
 
 // Browser history: DebugAssistanceServer.ServeFile falls back to index.html for any extensionless
 // path that isn't a real file on disk, so a direct navigation or refresh at e.g. /hotpatch is
@@ -23,5 +24,6 @@ export const router = createRouter({
                 return { initialTarget: target, dedupeKey };
             },
         },
+        { path: '/probes', component: ProbesView },
     ],
 });

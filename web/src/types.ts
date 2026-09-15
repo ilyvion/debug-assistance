@@ -180,3 +180,48 @@ export interface ModSettings {
     aiPromptGeneratorEnabled: boolean;
     errorCaptureEnabled: boolean;
 }
+
+export interface ProbeListEntry {
+    dedupeKey: string;
+    targetDeclaringTypeName: string;
+    targetMethodName: string;
+    targetDisplayName: string;
+    occurrenceCount: number;
+    firstSeen: string;
+    lastSeen: string;
+    topFrameModName: string | null;
+}
+
+export interface ProbeDetail {
+    dedupeKey: string;
+    targetDeclaringTypeName: string;
+    targetMethodName: string;
+    targetDisplayName: string;
+    rawStackTrace: string;
+    occurrenceCount: number;
+    firstSeen: string;
+    lastSeen: string;
+    frames: FrameInfo[];
+}
+
+export interface AddProbeRequest {
+    target: MethodRef;
+}
+
+export interface ActiveProbe {
+    id: string;
+    targetDeclaringTypeName: string;
+    targetMethodName: string;
+    targetDisplayName: string;
+    appliedAt: string;
+    totalInvocationCount: number;
+    uniqueHitCount: number;
+    isActive: boolean;
+    capReason: 'None' | 'InvocationCapReached' | 'ManuallyRemoved';
+}
+
+export interface AddProbeResult {
+    success: boolean;
+    error?: string;
+    probe?: ActiveProbe;
+}

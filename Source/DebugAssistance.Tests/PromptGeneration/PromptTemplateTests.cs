@@ -1,6 +1,7 @@
 using System.Reflection.Emit;
 using DebugAssistance.Capture;
 using DebugAssistance.Decompilation;
+using DebugAssistance.Probes;
 using DebugAssistance.PromptGeneration;
 using RimTestRedux;
 
@@ -198,6 +199,54 @@ internal static class PromptTemplateTests
         Assert
             .That(prompt.Contains("not currently loaded", StringComparison.OrdinalIgnoreCase))
             .Is.True();
+    }
+
+    [Test]
+    public static void BuildForAProbeHitOmitsFrameDetailsSectionWhenThereAreNoFrames()
+    {
+        var hit = new CapturedProbeHit(
+            "Some.Type",
+            "Method",
+            "Some.Type.Method()",
+            "at Some.Type.Method()",
+            [],
+            DateTime.UtcNow
+        );
+
+        var prompt = PromptTemplate.Build(hit);
+
+        Assert.That(prompt.Contains("## Probe", StringComparison.Ordinal)).Is.True();
+        Assert.That(prompt.Contains("Some.Type.Method()", StringComparison.Ordinal)).Is.True();
+        Assert.That(prompt.Contains("## Frame details", StringComparison.Ordinal)).Is.False();
+        Assert
+            .That(prompt.Contains("## What I'd like help with", StringComparison.Ordinal))
+            .Is.True();
+    }
+
+    [Test]
+    public static void BuildForAProbeHitAnnotatesAResolvedFrameAndIncludesADecompiledSnippet()
+    {
+        FrameDecompiler.ResetCacheForTests();
+        var fixture = BuildFixture();
+        var assembly = Assembly.LoadFrom(fixture.AssemblyPath);
+        var hit = new CapturedProbeHit(
+            "Some.Type",
+            "Method",
+            "Some.Type.Method()",
+            "trace",
+            [FrameFor(fixture, assembly, "MyMod")],
+            DateTime.UtcNow
+        );
+
+        var prompt = PromptTemplate.Build(hit);
+
+        Assert
+            .That(
+                prompt.Contains($"[MyMod, {assembly.GetName().Name}.dll]", StringComparison.Ordinal)
+            )
+            .Is.True();
+        Assert.That(prompt.Contains("## Frame details", StringComparison.Ordinal)).Is.True();
+        Assert.That(prompt.Contains("```csharp", StringComparison.Ordinal)).Is.True();
     }
 
     [Test]

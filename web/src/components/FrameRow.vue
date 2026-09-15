@@ -2,10 +2,13 @@
 import { reactive, ref } from 'vue';
 
 import {
+    addProbe,
     decompileCauseFrame,
     decompileCausePatch,
     decompileFrame,
     decompilePatch,
+    decompileProbeFrame,
+    decompileProbePatch,
 } from '../api';
 import { t } from '../translations';
 import type {
@@ -16,18 +19,29 @@ import type {
 } from '../types';
 import CodePanel from './CodePanel.vue';
 
-const props = defineProps<{
-    dedupeKey: string;
-    frame: FrameInfo;
-    // When set, this frame belongs to one of the error's inner-exception causes (index into
-    // ErrorDetail.innerCauses) rather than the error's own top-level frames, and decompile/patch
-    // requests are routed to that cause's own frame list instead.
-    causeIndex?: number;
-}>();
+const props = withDefaults(
+    defineProps<{
+        dedupeKey: string;
+        frame: FrameInfo;
+        // When set, this frame belongs to one of the error's inner-exception causes (index into
+        // ErrorDetail.innerCauses) rather than the error's own top-level frames, and decompile/patch
+        // requests are routed to that cause's own frame list instead. Never set for a probe hit's
+        // frame -- probe hits have no inner-exception causes.
+        causeIndex?: number;
+        // Which set of decompile/patch routes this frame's data came from -- ErrorDetail's captured
+        // errors (the default) or ProbeDetail's captured probe hits, which have their own,
+        // otherwise identical /api/probes/... routes.
+        kind?: 'error' | 'probe';
+    }>(),
+    { causeIndex: undefined, kind: 'error' },
+);
 
 const emit = defineEmits<{ 'patch-this-method': [BrowsedMethod] }>();
 
 function fetchOriginal(): Promise<DecompileResult> {
+    if (props.kind === 'probe') {
+        return decompileProbeFrame(props.dedupeKey, props.frame.index, false);
+    }
     return props.causeIndex != null
         ? decompileCauseFrame(
               props.dedupeKey,
@@ -39,6 +53,9 @@ function fetchOriginal(): Promise<DecompileResult> {
 }
 
 function fetchPatched(): Promise<DecompileResult> {
+    if (props.kind === 'probe') {
+        return decompileProbeFrame(props.dedupeKey, props.frame.index, true);
+    }
     return props.causeIndex != null
         ? decompileCauseFrame(
               props.dedupeKey,
@@ -50,6 +67,13 @@ function fetchPatched(): Promise<DecompileResult> {
 }
 
 function fetchPatch(patchIndex: number): Promise<DecompileResult> {
+    if (props.kind === 'probe') {
+        return decompileProbePatch(
+            props.dedupeKey,
+            props.frame.index,
+            patchIndex,
+        );
+    }
     return props.causeIndex != null
         ? decompileCausePatch(
               props.dedupeKey,
@@ -63,6 +87,37 @@ function fetchPatch(patchIndex: number): Promise<DecompileResult> {
 function patchThisMethod() {
     if (props.frame.patchTarget) {
         emit('patch-this-method', props.frame.patchTarget);
+    }
+}
+
+const probingThisMethod = ref(false);
+const probeAdded = ref(false);
+const probeError = ref<string | null>(null);
+
+async function probeThisMethod() {
+    if (!props.frame.patchTarget) {
+        return;
+    }
+    probingThisMethod.value = true;
+    probeAdded.value = false;
+    probeError.value = null;
+    try {
+        const result = await addProbe({
+            assemblyFullName: props.frame.patchTarget.assemblyFullName,
+            metadataToken: props.frame.patchTarget.metadataToken,
+        });
+        if (result.success) {
+            probeAdded.value = true;
+        } else {
+            probeError.value = t('FrameRow.ProbeFailed', result.error ?? '?');
+        }
+    } catch (err) {
+        probeError.value = t(
+            'FrameRow.ProbeFailed',
+            err instanceof Error ? err.message : String(err),
+        );
+    } finally {
+        probingThisMethod.value = false;
     }
 }
 
@@ -254,8 +309,27 @@ function subText(frame: FrameInfo): string | null {
                 >
                     {{ t('FrameRow.PatchThisMethod') }}
                 </button>
+                <button
+                    class="probe-this-method"
+                    :disabled="!frame.patchTarget || probingThisMethod"
+                    :title="
+                        frame.patchTarget
+                            ? undefined
+                            : t('FrameRow.ProbeThisMethodUnavailable')
+                    "
+                    @click="probeThisMethod"
+                >
+                    <span v-if="probingThisMethod" class="spinner" />
+                    {{ t('FrameRow.ProbeThisMethod') }}
+                </button>
             </div>
         </div>
+        <p v-if="probeAdded" class="status probe-status">
+            {{ t('FrameRow.ProbeAdded') }}
+        </p>
+        <p v-if="probeError" class="status error probe-status">
+            {{ probeError }}
+        </p>
 
         <div v-if="openPanels.has('original')" class="panel">
             <p v-if="loadingPanels.has('original')" class="status">
@@ -403,5 +477,10 @@ function subText(frame: FrameInfo): string | null {
     align-items: center;
     gap: 8px;
     color: var(--text-muted);
+}
+
+.probe-status {
+    margin-top: 4px;
+    font-size: 12px;
 }
 </style>
