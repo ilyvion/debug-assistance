@@ -65,7 +65,10 @@ internal static class ProjectScaffolder
 
         _ = Directory.CreateDirectory(projectDirectory);
 
-        File.WriteAllText(Path.Combine(projectDirectory, $"{projectName}.csproj"), BuildCsproj());
+        File.WriteAllText(
+            Path.Combine(projectDirectory, $"{projectName}.csproj"),
+            BuildCsproj(targetMethod)
+        );
         File.WriteAllText(Path.Combine(projectDirectory, "GlobalUsings.cs"), GlobalUsingsContent);
         File.WriteAllText(Path.Combine(projectDirectory, ".gitignore"), GitIgnoreContent);
         File.WriteAllText(
@@ -128,33 +131,177 @@ internal static class ProjectScaffolder
     private static string SanitizeIdentifier(string value) =>
         InvalidIdentifierCharsRegex.Replace(value, "_").Trim('_');
 
-    private static string BuildCsproj() =>
-        $"""
-            <Project Sdk="Microsoft.NET.Sdk">
-                <PropertyGroup>
-                    <TargetFramework>{TargetFramework}</TargetFramework>
-                    <LangVersion>latest</LangVersion>
-                    <Nullable>enable</Nullable>
-                    <ImplicitUsings>enable</ImplicitUsings>
-                </PropertyGroup>
-                <ItemGroup>
-                    <PackageReference Include="Krafs.Rimworld.Ref" Version="{RimWorldRefVersion}">
-                        <ExcludeAssets>runtime</ExcludeAssets>
-                    </PackageReference>
-                    <PackageReference Include="Lib.Harmony" Version="{HarmonyVersion}">
-                        <ExcludeAssets>runtime</ExcludeAssets>
-                    </PackageReference>
-                    <PackageReference Include="Krafs.Publicizer" Version="{PublicizerVersion}">
-                        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-                        <PrivateAssets>all</PrivateAssets>
-                    </PackageReference>
-                    <PackageReference Include="PolySharp" Version="{PolySharpVersion}">
-                        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-                        <PrivateAssets>all</PrivateAssets>
-                    </PackageReference>
-                </ItemGroup>
-            </Project>
-            """;
+    private static string BuildCsproj(MethodBase? targetMethod)
+    {
+        List<string> lines =
+        [
+            "<Project Sdk=\"Microsoft.NET.Sdk\">",
+            "    <PropertyGroup>",
+            $"        <TargetFramework>{TargetFramework}</TargetFramework>",
+            "        <LangVersion>latest</LangVersion>",
+            "        <Nullable>enable</Nullable>",
+            "        <ImplicitUsings>enable</ImplicitUsings>",
+            "    </PropertyGroup>",
+            "    <ItemGroup>",
+            $"        <PackageReference Include=\"Krafs.Rimworld.Ref\" Version=\"{RimWorldRefVersion}\">",
+            "            <ExcludeAssets>runtime</ExcludeAssets>",
+            "        </PackageReference>",
+            $"        <PackageReference Include=\"Lib.Harmony\" Version=\"{HarmonyVersion}\">",
+            "            <ExcludeAssets>runtime</ExcludeAssets>",
+            "        </PackageReference>",
+            $"        <PackageReference Include=\"Krafs.Publicizer\" Version=\"{PublicizerVersion}\">",
+            "            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>",
+            "            <PrivateAssets>all</PrivateAssets>",
+            "        </PackageReference>",
+            $"        <PackageReference Include=\"PolySharp\" Version=\"{PolySharpVersion}\">",
+            "            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>",
+            "            <PrivateAssets>all</PrivateAssets>",
+            "        </PackageReference>",
+            "    </ItemGroup>",
+        ];
+
+        lines.AddRange(BuildThirdPartyReferenceItemGroup(targetMethod));
+        lines.Add("</Project>");
+        lines.Add("");
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    // The target's declaring type (and any third-party mod type reachable from its parameters or
+    // return type -- including through generics, arrays, and by-ref) needs an explicit file
+    // reference here, since Krafs.Rimworld.Ref/Lib.Harmony only cover the base game, Unity, the
+    // BCL, and Harmony itself; without this, a target method belonging to (or touching) another
+    // mod fails to compile in the scaffolded project.
+    private static List<string> BuildThirdPartyReferenceItemGroup(MethodBase? targetMethod)
+    {
+        var references = CollectThirdPartyReferenceAssemblies(targetMethod)
+            .Select(assembly => (assembly.GetName().Name, Path: GetAssemblyFilePath(assembly)))
+            .Where(reference => reference.Path is not null)
+            .Select(reference => (reference.Name, Path: reference.Path!))
+            .ToList();
+
+        if (references.Count == 0)
+        {
+            return [];
+        }
+
+        List<string> lines = ["    <ItemGroup>"];
+        foreach (var (name, path) in references)
+        {
+            lines.Add($"        <Reference Include=\"{EscapeXmlAttribute(name)}\">");
+            lines.Add($"            <HintPath>{EscapeXmlAttribute(path)}</HintPath>");
+            lines.Add("        </Reference>");
+        }
+        lines.Add("    </ItemGroup>");
+        return lines;
+    }
+
+    private static IEnumerable<Assembly> CollectThirdPartyReferenceAssemblies(MethodBase? method)
+    {
+        if (method is null)
+        {
+            yield break;
+        }
+
+        HashSet<Assembly> seen = [];
+        foreach (var type in ReferencedTypes(method).SelectMany(FlattenType))
+        {
+            if (NeedsExplicitReference(type.Assembly) && seen.Add(type.Assembly))
+            {
+                yield return type.Assembly;
+            }
+        }
+    }
+
+    private static IEnumerable<Type> ReferencedTypes(MethodBase method)
+    {
+        if (method.DeclaringType is { } declaringType)
+        {
+            yield return declaringType;
+        }
+
+        foreach (var parameter in method.GetParameters())
+        {
+            yield return StripByRef(parameter.ParameterType);
+        }
+
+        if (method is MethodInfo { ReturnType: var returnType } && returnType != typeof(void))
+        {
+            yield return returnType;
+        }
+    }
+
+    // Walks into array/by-ref/pointer element types and generic type arguments (e.g. the
+    // ThirdPartyDef in List<ThirdPartyDef>) so a mod type reached only that way still gets a
+    // reference, not just a type used directly as a parameter/return type.
+    private static IEnumerable<Type> FlattenType(Type type)
+    {
+        yield return type;
+
+        if (type.HasElementType && type.GetElementType() is { } elementType)
+        {
+            foreach (var nested in FlattenType(elementType))
+            {
+                yield return nested;
+            }
+        }
+
+        if (type.IsGenericType)
+        {
+            foreach (var argument in type.GetGenericArguments())
+            {
+                foreach (var nested in FlattenType(argument))
+                {
+                    yield return nested;
+                }
+            }
+        }
+    }
+
+    // Krafs.Rimworld.Ref and Lib.Harmony already cover everything from the base game, Unity, the
+    // BCL, and Harmony itself.
+    private static bool NeedsExplicitReference(Assembly assembly) =>
+        assembly.GetName().Name != "0Harmony"
+        && FrameModResolver.ClassifyFrameworkAssembly(assembly) is null;
+
+    // Assembly.Location is populated by RimWorld 1.5+'s own Assembly.LoadFrom, but this mod also
+    // supports 1.3/1.4, which instead load mod assemblies into memory (Assembly.Load(byte[])) and
+    // leave it empty -- so this falls back to locating the same-named .dll under the owning mod's
+    // own Assemblies folder(s), the same lookup ModAssemblyHandler.ReloadAll itself uses to find
+    // them in the first place.
+    private static string? GetAssemblyFilePath(Assembly assembly)
+    {
+        if (!string.IsNullOrEmpty(assembly.Location) && File.Exists(assembly.Location))
+        {
+            return assembly.Location;
+        }
+
+        var mod = LoadedModManager.RunningMods.FirstOrDefault(mod =>
+            mod.assemblies.loadedAssemblies.Contains(assembly)
+        );
+        if (mod is null)
+        {
+            return null;
+        }
+
+        var assemblyName = assembly.GetName().Name;
+        return ModContentPack
+            .GetAllFilesForModPreserveOrder(
+                mod,
+                "Assemblies/",
+                extension => string.Equals(extension, ".dll", StringComparison.OrdinalIgnoreCase)
+            )
+            .Select(entry => entry.Item2)
+            .FirstOrDefault(file => Path.GetFileNameWithoutExtension(file.Name) == assemblyName)
+            ?.FullName;
+    }
+
+    private static string EscapeXmlAttribute(string value) =>
+        value
+            .Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("\"", "&quot;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal);
 
     private const string GlobalUsingsContent = """
         global using HarmonyLib;

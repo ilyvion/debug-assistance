@@ -19,6 +19,16 @@ internal static class ProjectScaffolderTests
 #pragma warning disable CA1822 // Mark members as static -- deliberately an instance method
         public bool InstanceNonVoid(string label) => label.Length == 0;
 #pragma warning restore CA1822
+
+        // Only ever reached as a generic argument (List<GenericArgumentType>), never a parameter
+        // or return type directly -- exercises FlattenType's walk into generic type arguments.
+        public sealed class GenericArgumentType;
+
+#pragma warning disable IDE0060 // Remove unused parameter -- only its type matters to the test
+        public static void StaticWithGenericArgumentTypeParameter(
+            List<GenericArgumentType> items
+        ) { }
+#pragma warning restore IDE0060
     }
 
     // Short enough (unlike SignatureFixtureMethods above) that a suggested project name built from
@@ -193,6 +203,78 @@ internal static class ProjectScaffolderTests
                 csproj.Contains("<ExcludeAssets>runtime</ExcludeAssets>", StringComparison.Ordinal)
             )
             .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedCsprojHasNoExtraReferenceItemGroupWithoutATargetMethod()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        Assert.That(csproj.Contains("<Reference Include=", StringComparison.Ordinal)).Is.False();
+    }
+
+    // SignatureFixtureMethods lives in this test assembly, which -- like any third-party mod
+    // assembly -- isn't covered by Krafs.Rimworld.Ref/Lib.Harmony, so its declaring type alone is
+    // enough to require an explicit <Reference> for the scaffolded project to build.
+    [Test]
+    public static void ScaffoldedCsprojReferencesTheTargetsOwnThirdPartyAssembly()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticVoidNoParams)
+        );
+        var thisAssembly = typeof(SignatureFixtureMethods).Assembly;
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        Assert
+            .That(
+                csproj.Contains(
+                    $"<Reference Include=\"{thisAssembly.GetName().Name}\">",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert
+            .That(
+                csproj.Contains(
+                    $"<HintPath>{thisAssembly.Location}</HintPath>",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+        Assert.That(File.Exists(thisAssembly.Location)).Is.True();
+    }
+
+    // A mod type only ever reached through a generic argument (List<GenericArgumentType>, not a
+    // parameter or return type directly) still needs its assembly referenced -- otherwise this
+    // would need only a single <Reference> anyway, since it's the same assembly as the declaring
+    // type, so this specifically counts occurrences to confirm the walk isn't emitting a duplicate.
+    [Test]
+    public static void ScaffoldedCsprojReferencesEachThirdPartyAssemblyOnlyOnce()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticWithGenericArgumentTypeParameter)
+        );
+        var thisAssembly = typeof(SignatureFixtureMethods).Assembly;
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        var referenceTag = $"<Reference Include=\"{thisAssembly.GetName().Name}\">";
+        var occurrences = 0;
+        var index = 0;
+        while ((index = csproj.IndexOf(referenceTag, index, StringComparison.Ordinal)) >= 0)
+        {
+            occurrences++;
+            index += referenceTag.Length;
+        }
+        Assert.That(occurrences).Is.EqualTo(1);
     }
 
     [Test]
