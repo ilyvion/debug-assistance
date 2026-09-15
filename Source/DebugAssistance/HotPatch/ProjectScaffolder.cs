@@ -161,6 +161,7 @@ internal static class ProjectScaffolder
         ];
 
         lines.AddRange(BuildThirdPartyReferenceItemGroup(targetMethod));
+        lines.AddRange(BuildPublicizeItemGroup(targetMethod));
         lines.Add("</Project>");
         lines.Add("");
 
@@ -194,6 +195,49 @@ internal static class ProjectScaffolder
         }
         lines.Add("    </ItemGroup>");
         return lines;
+    }
+
+    // A target type/parameter/return type that isn't visible outside its own assembly (internal,
+    // or nested inside a non-public type) would otherwise fail to compile in the generated
+    // Prefix/Postfix/etc. signatures, since Krafs.Rimworld.Ref only exposes RimWorld's public API
+    // and a third-party mod's own assembly is referenced as-is -- Krafs.Publicizer's
+    // IgnoresAccessChecksToAttribute mechanism is what makes those types compile-time accessible.
+    private static List<string> BuildPublicizeItemGroup(MethodBase? targetMethod)
+    {
+        var assemblyNames = CollectNonPublicReferencedTypes(targetMethod)
+            .Select(type => type.Assembly.GetName().Name)
+            .Distinct()
+            .ToList();
+
+        if (assemblyNames.Count == 0)
+        {
+            return [];
+        }
+
+        List<string> lines = ["    <ItemGroup>"];
+        foreach (var name in assemblyNames)
+        {
+            lines.Add($"        <Publicize Include=\"{EscapeXmlAttribute(name)}\" />");
+        }
+        lines.Add("    </ItemGroup>");
+        return lines;
+    }
+
+    private static IEnumerable<Type> CollectNonPublicReferencedTypes(MethodBase? method)
+    {
+        if (method is null)
+        {
+            yield break;
+        }
+
+        HashSet<Type> seen = [];
+        foreach (var type in ReferencedTypes(method).SelectMany(FlattenType))
+        {
+            if (!type.IsVisible && seen.Add(type))
+            {
+                yield return type;
+            }
+        }
     }
 
     private static IEnumerable<Assembly> CollectThirdPartyReferenceAssemblies(MethodBase? method)

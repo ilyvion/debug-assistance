@@ -278,6 +278,81 @@ internal static class ProjectScaffolderTests
     }
 
     [Test]
+    public static void ScaffoldedCsprojHasNoPublicizeItemGroupWithoutATargetMethod()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        Assert.That(csproj.Contains("<Publicize Include=", StringComparison.Ordinal)).Is.False();
+    }
+
+    // Math and its Abs overload are both public BCL members, so referencing them needs no
+    // Publicize entry.
+    [Test]
+    public static void ScaffoldedCsprojHasNoPublicizeItemGroupForAPublicTarget()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(Math).GetMethod(nameof(Math.Abs), [typeof(int)]);
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        Assert.That(csproj.Contains("<Publicize Include=", StringComparison.Ordinal)).Is.False();
+    }
+
+    // SignatureFixtureMethods is a private nested class, so its declaring type isn't visible
+    // outside this test assembly -- the scaffolded project needs a whole-assembly <Publicize>
+    // entry to compile a Prefix/Postfix that names it (e.g. as the __instance parameter type).
+    [Test]
+    public static void ScaffoldedCsprojPublicizesTheTargetsOwnAssemblyWhenItsTypeIsNotPublic()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticVoidNoParams)
+        );
+        var assemblyName = typeof(SignatureFixtureMethods).Assembly.GetName().Name;
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        Assert
+            .That(
+                csproj.Contains(
+                    $"<Publicize Include=\"{assemblyName}\" />",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    // The declaring type and the generic argument type are both non-public and both live in this
+    // same assembly, so the whole-assembly entry must appear once, not twice.
+    [Test]
+    public static void ScaffoldedCsprojPublicizesEachAssemblyOnlyOnce()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticWithGenericArgumentTypeParameter)
+        );
+        var assemblyName = typeof(SignatureFixtureMethods).Assembly.GetName().Name;
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        var publicizeTag = $"<Publicize Include=\"{assemblyName}\" />";
+        var occurrences = 0;
+        var index = 0;
+        while ((index = csproj.IndexOf(publicizeTag, index, StringComparison.Ordinal)) >= 0)
+        {
+            occurrences++;
+            index += publicizeTag.Length;
+        }
+        Assert.That(occurrences).Is.EqualTo(1);
+    }
+
+    [Test]
     public static void ScaffoldedGlobalUsingsCoversTheSameNamespacesAsTheRestOfTheRepo()
     {
         var dir = UniqueFixtureDirectory();

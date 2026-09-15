@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Generating a patch project for a method that references types from another mod no longer produces a project that fails to build: the scaffolded .csproj now automatically references that mod's assembly.
+- Generating a patch project for a method that references types from another mod no longer produces a project that fails to build: the scaffolded .csproj now automatically references that mod's assembly, and publicizes it if the referenced types are internal or private.
 - In the Hot Patch view's "Patch method" browser, navigating back up to a type or namespace after changing the target method (or Prefix/Postfix/etc.) no longer shows the old, now-outdated list of compatible types and methods.
 - Applying a hot patch after reloading the same patch assembly several times in a row no longer sometimes fails with "Unexpected null in ..." (or silently applies against a stale, previously-loaded version of your patch method).
 - In the Error Inspector's stack frame listing, each applied patch now shows its fully qualified type and method name instead of just the method name.
