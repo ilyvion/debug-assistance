@@ -172,7 +172,8 @@ internal static class ProjectScaffolder
     // return type -- including through generics, arrays, and by-ref) needs an explicit file
     // reference here, since Krafs.Rimworld.Ref/Lib.Harmony only cover the base game, Unity, the
     // BCL, and Harmony itself; without this, a target method belonging to (or touching) another
-    // mod fails to compile in the scaffolded project.
+    // mod fails to compile in the scaffolded project. Private=false (MSBuild's "Copy Local")
+    // stops that mod's assembly from being copied into the patch project's own output directory.
     private static List<string> BuildThirdPartyReferenceItemGroup(MethodBase? targetMethod)
     {
         var references = CollectThirdPartyReferenceAssemblies(targetMethod)
@@ -191,6 +192,7 @@ internal static class ProjectScaffolder
         {
             lines.Add($"        <Reference Include=\"{EscapeXmlAttribute(name)}\">");
             lines.Add($"            <HintPath>{EscapeXmlAttribute(path)}</HintPath>");
+            lines.Add("            <Private>false</Private>");
             lines.Add("        </Reference>");
         }
         lines.Add("    </ItemGroup>");

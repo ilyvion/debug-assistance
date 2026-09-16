@@ -250,6 +250,24 @@ internal static class ProjectScaffolderTests
         Assert.That(File.Exists(thisAssembly.Location)).Is.True();
     }
 
+    // The referenced mod assembly is already loaded into the running game, so it must not be
+    // copied into the patch project's own output directory alongside the patch assembly itself.
+    [Test]
+    public static void ScaffoldedCsprojDoesNotCopyTheReferencedThirdPartyAssemblyToOutput()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticVoidNoParams)
+        );
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
+        Assert
+            .That(csproj.Contains("<Private>false</Private>", StringComparison.Ordinal))
+            .Is.True();
+    }
+
     // A mod type only ever reached through a generic argument (List<GenericArgumentType>, not a
     // parameter or return type directly) still needs its assembly referenced -- otherwise this
     // would need only a single <Reference> anyway, since it's the same assembly as the declaring
