@@ -362,4 +362,61 @@ internal static class PromptTemplateTests
             .That(prompt.Contains("already set up to target", StringComparison.Ordinal))
             .Is.False();
     }
+
+    // The probe analogue of BuildHotPatchPromptIncludesTheReportBodyAndPointsAtTheGeneratedProject
+    // -- same shape, but opens on a probe summary and asks for an investigation, not a fix, since
+    // there's no error attached to a probe hit.
+    [Test]
+    public static void BuildHotPatchPromptForAProbeHitIncludesTheReportBodyAndPointsAtTheGeneratedProject()
+    {
+        FrameDecompiler.ResetCacheForTests();
+        var fixture = BuildFixture();
+        var assembly = Assembly.LoadFrom(fixture.AssemblyPath);
+        var hit = new CapturedProbeHit(
+            "Some.Type",
+            "Method",
+            "Some.Type.Method()",
+            "trace",
+            [FrameFor(fixture, assembly, "MyMod")],
+            DateTime.UtcNow
+        );
+
+        var prompt = PromptTemplate.BuildHotPatchPrompt(
+            hit,
+            "/dev/patches/Generated",
+            targetMethodDescription: null
+        );
+
+        Assert.That(prompt.Contains("## Probe", StringComparison.Ordinal)).Is.True();
+        Assert.That(prompt.Contains("## Frame details", StringComparison.Ordinal)).Is.True();
+        Assert.That(prompt.Contains("```csharp", StringComparison.Ordinal)).Is.True();
+        Assert.That(prompt.Contains("## Task", StringComparison.Ordinal)).Is.True();
+        Assert
+            .That(prompt.Contains("`/dev/patches/Generated`", StringComparison.Ordinal))
+            .Is.True();
+        Assert
+            .That(prompt.Contains("## What I'd like help with", StringComparison.Ordinal))
+            .Is.False();
+    }
+
+    [Test]
+    public static void BuildHotPatchPromptForAProbeHitMentionsTheTargetMethodWhenOneWasGiven()
+    {
+        var hit = new CapturedProbeHit(
+            "Some.Type",
+            "Method",
+            "Some.Type.Method()",
+            "trace",
+            [],
+            DateTime.UtcNow
+        );
+
+        var prompt = PromptTemplate.BuildHotPatchPrompt(
+            hit,
+            "/dev/patches/Generated",
+            "Some.Type.Method"
+        );
+
+        Assert.That(prompt.Contains("`Some.Type.Method`", StringComparison.Ordinal)).Is.True();
+    }
 }

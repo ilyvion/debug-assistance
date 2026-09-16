@@ -73,6 +73,27 @@ internal static class PromptTemplate
         return sb.ToString();
     }
 
+    // Same as the CapturedError overload above, but for a probe hit's "Patch this method" entry
+    // point — there's no error to diagnose, so the task below asks for an investigative patch
+    // instead of a fix.
+    internal static string BuildHotPatchPrompt(
+        CapturedProbeHit hit,
+        string projectDirectory,
+        string? targetMethodDescription
+    )
+    {
+        var sb = new StringBuilder();
+
+        _ = sb.AppendLine("# DebugAssistance hot patch task");
+        _ = sb.AppendLine();
+        AppendProbeSummary(sb, hit);
+        AppendStackTrace(sb, hit.Frames);
+        AppendFrameDetails(sb, hit.Frames);
+        AppendProbeHotPatchTask(sb, projectDirectory, targetMethodDescription);
+
+        return sb.ToString();
+    }
+
     private static void AppendHotPatchTask(
         StringBuilder sb,
         string projectDirectory,
@@ -92,6 +113,31 @@ internal static class PromptTemplate
         _ = sb.AppendLine(
             "Keep whichever of the stub's Prefix/Postfix/Transpiler/Finalizer methods best fit the "
                 + "diagnosis (a combination is fine), remove the rest, and explain your reasoning."
+        );
+        _ = sb.AppendLine();
+    }
+
+    private static void AppendProbeHotPatchTask(
+        StringBuilder sb,
+        string projectDirectory,
+        string? targetMethodDescription
+    )
+    {
+        _ = sb.AppendLine("## Task");
+        _ = sb.AppendLine(
+            $"The call stack above was captured by a probe on the target method below, not by an "
+                + "error — nothing is known to be wrong with it yet. Investigate why it's being "
+                + "called from here and whether that's a problem, writing whatever Harmony patch "
+                + $"would help confirm or rule that out, in the starter project already generated "
+                + $"at `{projectDirectory}` (see its `Patches.cs`)."
+        );
+        if (targetMethodDescription is { } target)
+        {
+            _ = sb.AppendLine($"Its stub is already set up to target `{target}`.");
+        }
+        _ = sb.AppendLine(
+            "Keep whichever of the stub's Prefix/Postfix/Transpiler/Finalizer methods best fit the "
+                + "investigation (a combination is fine), remove the rest, and explain your reasoning."
         );
         _ = sb.AppendLine();
     }
