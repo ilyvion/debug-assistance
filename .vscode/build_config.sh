@@ -1,2 +1,2 @@
 MOD_NAME="DebugAssistance"
-EXTRA_FILES=("Site")
+EXTRA_FILES=("Site" "Integrations")
