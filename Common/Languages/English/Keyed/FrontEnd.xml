@@ -105,6 +105,8 @@
     <DebugAssistance.FrontEnd.HotPatch.PatchTypeLabel>Patch type</DebugAssistance.FrontEnd.HotPatch.PatchTypeLabel>
     <DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethods>Only show compatible methods</DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethods>
     <DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethodsTooltip>Uncheck to browse every method in the loaded assembly, even ones that do not look compatible with the chosen target method and patch type.</DebugAssistance.FrontEnd.HotPatch.OnlyShowCompatibleMethodsTooltip>
+    <DebugAssistance.FrontEnd.HotPatch.HighlightMatches>Highlight matches</DebugAssistance.FrontEnd.HotPatch.HighlightMatches>
+    <DebugAssistance.FrontEnd.HotPatch.HighlightMatchesTooltip>Uncheck to show search results without highlighting the part of each name that matched your search.</DebugAssistance.FrontEnd.HotPatch.HighlightMatchesTooltip>
     <DebugAssistance.FrontEnd.HotPatch.TargetMethodSectionTitle>Target method</DebugAssistance.FrontEnd.HotPatch.TargetMethodSectionTitle>
     <DebugAssistance.FrontEnd.HotPatch.Apply>Apply patch</DebugAssistance.FrontEnd.HotPatch.Apply>
     <DebugAssistance.FrontEnd.HotPatch.ApplyFailed>Applying the patch failed.</DebugAssistance.FrontEnd.HotPatch.ApplyFailed>

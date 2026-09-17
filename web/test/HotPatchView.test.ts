@@ -563,6 +563,56 @@ describe('HotPatchView', () => {
         );
     });
 
+    it('has the highlight-matches checkbox checked by default', async () => {
+        const wrapper = await mountPanel();
+
+        expect(
+            wrapper.find<HTMLInputElement>('.highlight-matches-label input')
+                .element.checked,
+        ).toBe(true);
+    });
+
+    it('stops highlighting matches in both pickers once the checkbox is unchecked', async () => {
+        const wrapper = await mountPanel();
+        await loadAssembly(wrapper);
+
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
+            targetMethodResult(),
+        ]);
+        await wrapper
+            .find('.target-method-section .filter-input')
+            .setValue('SomeMethod');
+        await flushDebounce();
+        expect(
+            wrapper.find('.target-method-section .results mark').exists(),
+        ).toBe(true);
+
+        const checkboxes = wrapper.findAll('.highlight-matches-label input');
+        await checkboxes[0].setValue(false);
+
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
+            targetMethodResult(),
+        ]);
+        await wrapper
+            .find('.target-method-section .filter-input')
+            .setValue('SomeMethod');
+        await flushDebounce();
+        expect(
+            wrapper.find('.target-method-section .results mark').exists(),
+        ).toBe(false);
+
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
+            patchMethodResult(),
+        ]);
+        await wrapper
+            .find('.patch-method-section .filter-input')
+            .setValue('Prefix');
+        await flushDebounce();
+        expect(
+            wrapper.find('.patch-method-section .results mark').exists(),
+        ).toBe(false);
+    });
+
     it('applies a patch with the selected target and patch method, then refreshes the active list', async () => {
         const wrapper = await mountPanel();
         await loadAssembly(wrapper);

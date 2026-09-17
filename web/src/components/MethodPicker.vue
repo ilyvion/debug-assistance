@@ -18,17 +18,23 @@ import type {
     TypeEntry,
 } from '../types';
 
-const props = defineProps<{
-    // null browses every currently loaded assembly (the target-method picker); a path browses
-    // just the one assembly LiveAssemblyLoader has loaded from it (the patch-method picker).
-    path: string | null;
-    modelValue: BrowsedMethod | null;
-    // Only meaningful for the patch-method picker: when both are set, narrows every fetched
-    // method list to what PatchCompatibility.IsCompatible accepts for that target + patch type.
-    // Left unset by the target-method picker, which has no target of its own to filter against.
-    targetMethod?: BrowsedMethod | null;
-    patchType?: HarmonyPatchTypeName | null;
-}>();
+const props = withDefaults(
+    defineProps<{
+        // null browses every currently loaded assembly (the target-method picker); a path
+        // browses just the one assembly LiveAssemblyLoader has loaded from it (the
+        // patch-method picker).
+        path: string | null;
+        modelValue: BrowsedMethod | null;
+        // Only meaningful for the patch-method picker: when both are set, narrows every fetched
+        // method list to what PatchCompatibility.IsCompatible accepts for that target + patch
+        // type. Left unset by the target-method picker, which has no target of its own to
+        // filter against.
+        targetMethod?: BrowsedMethod | null;
+        patchType?: HarmonyPatchTypeName | null;
+        highlightMatches?: boolean;
+    }>(),
+    { highlightMatches: true },
+);
 
 const emit = defineEmits<{
     'update:modelValue': [BrowsedMethod | null];
@@ -64,6 +70,85 @@ function describeError(err: unknown): string {
 
 function isSearching(): boolean {
     return filterText.value.trim() !== '';
+}
+
+interface TextSegment {
+    text: string;
+    highlighted: boolean;
+}
+
+// Splits `filter` on its last "." the same way MethodBrowser.Browse does server-side, so the
+// highlighted portion of each result matches what actually made it match.
+function splitFilter(filter: string): {
+    typePart: string | null;
+    methodPart: string;
+} {
+    const lastDot = filter.lastIndexOf('.');
+    return lastDot >= 0
+        ? {
+              typePart: filter.slice(0, lastDot),
+              methodPart: filter.slice(lastDot + 1),
+          }
+        : { typePart: null, methodPart: filter };
+}
+
+// Wraps the first case-insensitive occurrence of `query` in `text` as its own highlighted
+// segment; returns `text` as a single unhighlighted segment if `query` is empty or absent.
+function highlightSegments(text: string, query: string): TextSegment[] {
+    if (!query) {
+        return [{ text, highlighted: false }];
+    }
+    const index = text.toLowerCase().indexOf(query.toLowerCase());
+    if (index < 0) {
+        return [{ text, highlighted: false }];
+    }
+    const segments: TextSegment[] = [];
+    if (index > 0) {
+        segments.push({ text: text.slice(0, index), highlighted: false });
+    }
+    segments.push({
+        text: text.slice(index, index + query.length),
+        highlighted: true,
+    });
+    if (index + query.length < text.length) {
+        segments.push({
+            text: text.slice(index + query.length),
+            highlighted: false,
+        });
+    }
+    return segments;
+}
+
+// Mirrors MethodBrowser.Browse's own fallback: without a "." the whole filter is also checked
+// against the declaring type's name, so that's what gets highlighted there in that case.
+function typeNameSegments(method: BrowsedMethod): TextSegment[] {
+    if (!props.highlightMatches) {
+        return [{ text: method.declaringTypeName, highlighted: false }];
+    }
+    const { typePart, methodPart } = splitFilter(filterText.value.trim());
+    const query = typePart ?? methodPart;
+    return highlightSegments(method.declaringTypeName, query);
+}
+
+// `signature` is "<returnType> <methodName>(<params>)" with no space before the "(" -- locating
+// that marker splits it back into the pieces needed to highlight just the method name.
+function signatureSegments(method: BrowsedMethod): TextSegment[] {
+    if (!props.highlightMatches) {
+        return [{ text: method.signature, highlighted: false }];
+    }
+    const { methodPart } = splitFilter(filterText.value.trim());
+    const marker = `${method.methodName}(`;
+    const index = method.signature.indexOf(marker);
+    if (index < 0) {
+        return [{ text: method.signature, highlighted: false }];
+    }
+    const prefix = method.signature.slice(0, index);
+    const suffix = method.signature.slice(index + method.methodName.length);
+    return [
+        { text: prefix, highlighted: false },
+        ...highlightSegments(method.methodName, methodPart),
+        { text: suffix, highlighted: false },
+    ];
 }
 
 function compatibilityFilter(): CompatibleWith | null {
@@ -412,13 +497,35 @@ defineExpose({ change });
                             class="search-result"
                             @click="selectMethod(method)"
                         >
-                            <code class="signature">{{
-                                method.signature
-                            }}</code>
+                            <code class="signature"
+                                ><template
+                                    v-for="(
+                                        segment, index
+                                    ) in signatureSegments(method)"
+                                    :key="index"
+                                    ><mark v-if="segment.highlighted">{{
+                                        segment.text
+                                    }}</mark
+                                    ><template v-else>{{
+                                        segment.text
+                                    }}</template></template
+                                ></code
+                            >
                             <span class="method-meta">
-                                <span class="type">{{
-                                    method.declaringTypeName
-                                }}</span>
+                                <span class="type"
+                                    ><template
+                                        v-for="(
+                                            segment, index
+                                        ) in typeNameSegments(method)"
+                                        :key="index"
+                                        ><mark v-if="segment.highlighted">{{
+                                            segment.text
+                                        }}</mark
+                                        ><template v-else>{{
+                                            segment.text
+                                        }}</template></template
+                                    ></span
+                                >
                                 <span class="assembly">{{
                                     method.assemblyName
                                 }}</span>
@@ -665,5 +772,11 @@ defineExpose({ change });
 .type {
     color: var(--text-muted);
     font-size: 12px;
+}
+
+.search-result mark {
+    background: color-mix(in srgb, var(--ctp-yellow) 45%, transparent);
+    color: var(--text);
+    border-radius: 2px;
 }
 </style>

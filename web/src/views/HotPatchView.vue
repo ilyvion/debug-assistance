@@ -98,6 +98,8 @@ const patchType = ref<HarmonyPatchTypeName>('Prefix');
 // Lets a player who suspects PatchCompatibility.IsCompatible got their case wrong fall back to
 // browsing every method in the loaded assembly, unfiltered.
 const compatibilityFilterEnabled = ref(true);
+// Shared between the target-method and patch-method pickers, so toggling it once affects both.
+const highlightMatchesEnabled = ref(true);
 // Switching patch type can turn an already-selected patch method incompatible, so drive "Change"
 // the same way a successful Apply does -- the player lands back in the type they chose it from
 // and can re-select it in one click if it's still valid for the new patch type.
@@ -765,8 +767,26 @@ async function onPatchesRemoved() {
                     to wait on a patch assembly being loaded first (and a pre-filled target shows
                     up immediately). -->
                     <section class="method-pane target-method-section">
-                        <h4>{{ t('HotPatch.TargetMethodSectionTitle') }}</h4>
-                        <MethodPicker v-model="targetMethod" :path="null" />
+                        <div class="section-header">
+                            <h4>
+                                {{ t('HotPatch.TargetMethodSectionTitle') }}
+                            </h4>
+                            <label
+                                class="highlight-matches-label"
+                                :title="t('HotPatch.HighlightMatchesTooltip')"
+                            >
+                                <input
+                                    v-model="highlightMatchesEnabled"
+                                    type="checkbox"
+                                />
+                                {{ t('HotPatch.HighlightMatches') }}
+                            </label>
+                        </div>
+                        <MethodPicker
+                            v-model="targetMethod"
+                            :path="null"
+                            :highlight-matches="highlightMatchesEnabled"
+                        />
                         <button
                             type="button"
                             class="add-probe"
@@ -784,7 +804,23 @@ async function onPatchesRemoved() {
 
                     <div v-if="loadedPath" class="method-pane patch-pane">
                         <section class="patch-method-section">
-                            <h4>{{ t('HotPatch.PatchMethodSectionTitle') }}</h4>
+                            <div class="section-header">
+                                <h4>
+                                    {{ t('HotPatch.PatchMethodSectionTitle') }}
+                                </h4>
+                                <label
+                                    class="highlight-matches-label"
+                                    :title="
+                                        t('HotPatch.HighlightMatchesTooltip')
+                                    "
+                                >
+                                    <input
+                                        v-model="highlightMatchesEnabled"
+                                        type="checkbox"
+                                    />
+                                    {{ t('HotPatch.HighlightMatches') }}
+                                </label>
+                            </div>
 
                             <label class="patch-type-label">
                                 {{ t('HotPatch.PatchTypeLabel') }}
@@ -829,6 +865,7 @@ async function onPatchesRemoved() {
                                         : null
                                 "
                                 :patch-type="patchType"
+                                :highlight-matches="highlightMatchesEnabled"
                             />
                         </section>
 
@@ -972,6 +1009,27 @@ async function onPatchesRemoved() {
 section h4 {
     margin: 0 0 8px;
     font-size: 13px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.section-header h4 {
+    margin: 0;
+}
+
+.highlight-matches-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    color: var(--text-muted);
 }
 
 .assembly-section button.primary {

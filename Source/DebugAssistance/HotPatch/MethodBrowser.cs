@@ -40,6 +40,12 @@ internal static class MethodBrowser
     // named like PostExposeData declared on a type named like CompGlower. Without a ".", the whole
     // filter is checked against both the method name and the declaring type's name, so e.g.
     // "CompGlower" alone lists every method that type declares.
+    //
+    // Results are ranked by how well the filter matches (exact name, then prefix, then a
+    // camelCase/namespace word boundary, then a bare substring anywhere) before being returned, so
+    // e.g. "pawn.kill" puts Pawn.Kill itself ahead of Pawn methods that merely contain "kill" as
+    // a substring (like DoKillSideEffects) or types that merely contain "pawn" (like
+    // StartingPawnUtility).
     internal static List<BrowsedMethod> Browse(
         IEnumerable<Assembly> assemblies,
         string? nameFilter = null
@@ -57,41 +63,108 @@ internal static class MethodBrowser
             }
         }
 
-        List<BrowsedMethod> results = [];
+        List<(int Score, BrowsedMethod Method)> scored = [];
         foreach (var assembly in assemblies)
         {
             foreach (var type in GetLoadableTypes(assembly))
             {
                 var typeName = type.FullName ?? type.Name;
-                if (
-                    typeFilter is not null
-                    && !typeName.Contains(typeFilter, StringComparison.OrdinalIgnoreCase)
-                )
+                var typeScore = 0;
+                if (typeFilter is not null)
                 {
-                    continue;
+                    typeScore = MatchScore(typeName, typeFilter);
+                    if (typeScore < 0)
+                    {
+                        continue;
+                    }
                 }
 
-                var typeNameAlsoMatches =
-                    typeFilter is null
-                    && methodFilter is not null
-                    && typeName.Contains(methodFilter, StringComparison.OrdinalIgnoreCase);
+                // Without a ".", the whole filter is also checked against the declaring type's
+                // name, so a filter like "CompGlower" alone still lists every method that type
+                // declares even though none of their names contain "CompGlower".
+                var typeNameMatchScore =
+                    typeFilter is null && methodFilter is not null
+                        ? MatchScore(typeName, methodFilter)
+                        : -1;
 
                 foreach (var method in GetLoadableMethods(type))
                 {
-                    if (
-                        methodFilter is not null
-                        && !typeNameAlsoMatches
-                        && !method.Name.Contains(methodFilter, StringComparison.OrdinalIgnoreCase)
-                    )
+                    var methodScore = methodFilter is null
+                        ? 0
+                        : MatchScore(method.Name, methodFilter);
+                    if (methodFilter is not null && methodScore < 0 && typeNameMatchScore < 0)
                     {
                         continue;
                     }
 
-                    results.Add(new BrowsedMethod(assembly, type, method));
+                    var score =
+                        Math.Max(typeScore, 0)
+                        + Math.Max(methodScore, 0)
+                        + Math.Max(typeNameMatchScore, 0);
+                    scored.Add((score, new BrowsedMethod(assembly, type, method)));
                 }
             }
         }
-        return results;
+
+        return
+        [
+            .. scored
+                .OrderByDescending(entry => entry.Score)
+                .ThenBy(
+                    entry => entry.Method.DeclaringType.FullName ?? entry.Method.DeclaringType.Name,
+                    StringComparer.OrdinalIgnoreCase
+                )
+                .ThenBy(entry => entry.Method.Method.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(entry => entry.Method),
+        ];
+    }
+
+    // How well `filter` matches `candidate`, or -1 if it doesn't match at all (a plain
+    // case-insensitive substring check, same as before). Among matches, an exact name match ranks
+    // above matching just the last segment (e.g. "Pawn" against "Verse.Pawn"), which ranks above a
+    // prefix match, which ranks above the filter starting right at a namespace/nested-type
+    // separator or a camelCase word boundary (e.g. "Kill" inside "DoKillSideEffects"), which ranks
+    // above the filter merely occurring somewhere in the middle of a word (e.g. "kill" inside
+    // "DrawSkillSummaries", via "Skill").
+    private static int MatchScore(string candidate, string filter)
+    {
+        if (filter.Length == 0)
+        {
+            return 0;
+        }
+
+        if (string.Equals(candidate, filter, StringComparison.OrdinalIgnoreCase))
+        {
+            return 100;
+        }
+
+        var lastSeparator = candidate.LastIndexOfAny(['.', '+']);
+        var simpleName = lastSeparator >= 0 ? candidate[(lastSeparator + 1)..] : candidate;
+        if (string.Equals(simpleName, filter, StringComparison.OrdinalIgnoreCase))
+        {
+            return 90;
+        }
+
+        if (simpleName.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+        {
+            return 70;
+        }
+
+        if (candidate.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+        {
+            return 60;
+        }
+
+        var index = candidate.IndexOf(filter, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return -1;
+        }
+
+        var atWordBoundary =
+            candidate[index - 1] is '.' or '+' or '_'
+            || (char.IsUpper(candidate[index]) && char.IsLower(candidate[index - 1]));
+        return atWordBoundary ? 40 : 10;
     }
 
     // First level of the tree-style picker (Assembly -> Namespace -> Type -> Member): every

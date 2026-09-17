@@ -12,8 +12,9 @@ internal static class MethodBrowserTests
     // Builds a tiny real assembly on disk with: a base/derived pair (to check DeclaredOnly
     // behavior), a "Good" type with both a public static and a private instance method (to check
     // the BindingFlags cover both), a "Broken" type that claims to implement IDisposable but never
-    // defines Dispose(), and an "AfterBroken" type declared after it (to prove enumeration
-    // recovers and continues rather than stopping at the first failure).
+    // defines Dispose(), an "AfterBroken" type declared after it (to prove enumeration recovers
+    // and continues rather than stopping at the first failure), and a "Ranked" type with methods
+    // chosen to exercise Browse's match-quality ranking.
     //
     // AssemblyBuilderAccess.Save (not RunAndSave, unlike FrameDecompilerTests' fixture) is
     // deliberate: a Save-only builder never needs to load Broken as a runnable type in this
@@ -78,6 +79,25 @@ internal static class MethodBrowserTests
             MethodAttributes.Public | MethodAttributes.Static
         );
         _ = afterBrokenType.CreateType();
+
+        // For ranking tests: "Kill" is an exact match for the filter "kill", "DoKillSideEffects"
+        // only matches it at a camelCase word boundary, and "StartingPawnUtility" only matches a
+        // "pawn" filter via a substring buried mid-word ("Spawn").
+        var rankedType = moduleBuilder.DefineType(
+            "Fixture.Ranked",
+            TypeAttributes.Public | TypeAttributes.Class
+        );
+        DefineParameterlessMethod(
+            rankedType,
+            "Kill",
+            MethodAttributes.Public | MethodAttributes.Static
+        );
+        DefineParameterlessMethod(
+            rankedType,
+            "DoKillSideEffects",
+            MethodAttributes.Public | MethodAttributes.Static
+        );
+        _ = rankedType.CreateType();
 
         assemblyBuilder.Save(fileName);
 
@@ -236,6 +256,32 @@ internal static class MethodBrowserTests
     }
 
     [Test]
+    public static void BrowseRanksAnExactMethodNameMatchAboveAWordBoundarySubstringMatch()
+    {
+        var assembly = LoadFixture(BuildFixtureAssembly());
+
+        var results = MethodBrowser.Browse([assembly], "kill");
+
+        var killIndex = results.FindIndex(r => r.Method.Name == "Kill");
+        var sideEffectsIndex = results.FindIndex(r => r.Method.Name == "DoKillSideEffects");
+        Assert.That(killIndex).Is.LessThan(sideEffectsIndex);
+    }
+
+    [Test]
+    public static void BrowseWithADotStillRanksAnExactMethodMatchAboveASubstringMatch()
+    {
+        var assembly = LoadFixture(BuildFixtureAssembly());
+
+        // Both "Kill" and "DoKillSideEffects" satisfy the dotted "Ranked.Kill" filter (the method
+        // part is still a plain substring check), but the exact match should still come first.
+        var results = MethodBrowser.Browse([assembly], "Ranked.Kill");
+
+        Assert.ThatCollection(results).Has.Count(2);
+        Assert.That(results[0].Method.Name).Is.EqualTo("Kill");
+        Assert.That(results[1].Method.Name).Is.EqualTo("DoKillSideEffects");
+    }
+
+    [Test]
     public static void BrowseNamespacesGroupsTypesByNamespaceWithCounts()
     {
         var assembly = LoadFixture(BuildFixtureAssembly());
@@ -243,7 +289,7 @@ internal static class MethodBrowserTests
         var namespaces = MethodBrowser.BrowseNamespaces(assembly);
 
         var fixtureNamespace = namespaces.Single(ns => ns.Name == "Fixture");
-        Assert.That(fixtureNamespace.TypeCount).Is.EqualTo(5);
+        Assert.That(fixtureNamespace.TypeCount).Is.EqualTo(6);
     }
 
     [Test]

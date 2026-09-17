@@ -307,6 +307,54 @@ describe('MethodPicker', () => {
         expect(rows[1].text()).toContain('MyPatch.Fixes.OtherFix');
     });
 
+    it('highlights the matched part of the method name and declaring type in each search result', async () => {
+        vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([]);
+        const wrapper = mount(MethodPicker, {
+            props: { path: '/dev/patch.dll', modelValue: null },
+        });
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
+            methodEntry({
+                declaringTypeName: 'MyPatch.Fixes.SomeFix',
+                methodName: 'PostExposeData',
+                signature: 'void PostExposeData()',
+            }),
+        ]);
+        await wrapper.find('.filter-input').setValue('SomeFix.Expose');
+        await flushDebounce();
+
+        const row = wrapper.find('.results button');
+        expect(row.find('.signature mark').text()).toBe('Expose');
+        expect(row.find('.type mark').text()).toBe('SomeFix');
+    });
+
+    it('skips highlighting matches when highlightMatches is set to false', async () => {
+        vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([]);
+        const wrapper = mount(MethodPicker, {
+            props: {
+                path: '/dev/patch.dll',
+                modelValue: null,
+                highlightMatches: false,
+            },
+        });
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
+            methodEntry({
+                declaringTypeName: 'MyPatch.Fixes.SomeFix',
+                methodName: 'PostExposeData',
+                signature: 'void PostExposeData()',
+            }),
+        ]);
+        await wrapper.find('.filter-input').setValue('SomeFix.Expose');
+        await flushDebounce();
+
+        const row = wrapper.find('.results button');
+        expect(row.find('.signature mark').exists()).toBe(false);
+        expect(row.find('.type mark').exists()).toBe(false);
+    });
+
     it('includes the target method and patch type as a compatibility filter when both are set', async () => {
         vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([]);
         const targetMethod = methodEntry({
