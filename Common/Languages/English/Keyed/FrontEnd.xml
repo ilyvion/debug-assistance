@@ -147,6 +147,10 @@
     <DebugAssistance.FrontEnd.HotPatch.ProbeCapReached>Stopped automatically after reaching its invocation cap.</DebugAssistance.FrontEnd.HotPatch.ProbeCapReached>
     <DebugAssistance.FrontEnd.HotPatch.StopProbe>Stop</DebugAssistance.FrontEnd.HotPatch.StopProbe>
     <DebugAssistance.FrontEnd.HotPatch.StopProbeConfirm>Stop this probe? Its already-captured hits are kept in the Probes list.</DebugAssistance.FrontEnd.HotPatch.StopProbeConfirm>
+    <DebugAssistance.FrontEnd.HotPatch.DiscoveredPatchesTitle>Pre-configured patches found</DebugAssistance.FrontEnd.HotPatch.DiscoveredPatchesTitle>
+    <DebugAssistance.FrontEnd.HotPatch.DiscoveredPatchesIntro>This assembly has {0} patch method(s) already carrying a [HarmonyPatch] target. Choose which to apply now.</DebugAssistance.FrontEnd.HotPatch.DiscoveredPatchesIntro>
+    <DebugAssistance.FrontEnd.HotPatch.ApplySelected>Apply selected ({0})</DebugAssistance.FrontEnd.HotPatch.ApplySelected>
+    <DebugAssistance.FrontEnd.HotPatch.Close>Close</DebugAssistance.FrontEnd.HotPatch.Close>
 
     <DebugAssistance.FrontEnd.Probes.Title>Probes</DebugAssistance.FrontEnd.Probes.Title>
     <DebugAssistance.FrontEnd.Probes.FilterPlaceholder>Filter probes…</DebugAssistance.FrontEnd.Probes.FilterPlaceholder>

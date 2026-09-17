@@ -599,6 +599,73 @@ internal static class ProjectScaffolderTests
     }
 
     [Test]
+    public static void ScaffoldedPatchesFileHasNoHarmonyPatchAttributeWithoutATargetMethod()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert.That(patches.Contains("[HarmonyPatch(", StringComparison.Ordinal)).Is.False();
+    }
+
+    [Test]
+    public static void ScaffoldedPatchesFileCarriesAClassLevelHarmonyPatchAttributeForAMethodTarget()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetMethod(
+            nameof(SignatureFixtureMethods.StaticVoidNoParams)
+        );
+        var declaringTypeName = typeof(SignatureFixtureMethods).FullName.Replace('+', '.');
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(
+                patches.Contains(
+                    $"[HarmonyPatch(typeof({declaringTypeName}), nameof({declaringTypeName}.StaticVoidNoParams))]",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedPatchesFileCarriesAConstructorTargetedHarmonyPatchAttribute()
+    {
+        var dir = UniqueFixtureDirectory();
+        var target = typeof(SignatureFixtureMethods).GetConstructor(Type.EmptyTypes);
+        var declaringTypeName = typeof(SignatureFixtureMethods).FullName.Replace('+', '.');
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", target, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert
+            .That(
+                patches.Contains(
+                    $"[HarmonyPatch(typeof({declaringTypeName}), MethodType.Constructor)]",
+                    StringComparison.Ordinal
+                )
+            )
+            .Is.True();
+    }
+
+    [Test]
+    public static void ScaffoldedPatchesFileCarriesAllFourHarmonyPatchTypeAttributesRegardlessOfTarget()
+    {
+        var dir = UniqueFixtureDirectory();
+
+        _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
+
+        var patches = File.ReadAllText(Path.Combine(dir, "MyPatch", "Patches.cs"));
+        Assert.That(patches.Contains("[HarmonyPrefix]", StringComparison.Ordinal)).Is.True();
+        Assert.That(patches.Contains("[HarmonyPostfix]", StringComparison.Ordinal)).Is.True();
+        Assert.That(patches.Contains("[HarmonyTranspiler]", StringComparison.Ordinal)).Is.True();
+        Assert.That(patches.Contains("[HarmonyFinalizer]", StringComparison.Ordinal)).Is.True();
+    }
+
+    [Test]
     public static void SuggestProjectNameReturnsDefaultWithoutATargetMethod() =>
         Assert
             .That(ProjectScaffolder.SuggestProjectName(null, null))

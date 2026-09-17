@@ -61,6 +61,7 @@ internal static class HotPatchEndpoints
             // methods, so any entries decompiled from the previous load must be dropped now, or a
             // later decompile request would keep serving stale, pre-reload source.
             FrameDecompiler.InvalidateCacheForAssemblyLocation(path);
+            var discoveredPatches = PatchAttributeScanner.Scan(loaded.Assembly);
             ctx.Response.WriteJson(
                 new LoadAssemblyResultDto
                 {
@@ -69,6 +70,8 @@ internal static class HotPatchEndpoints
                     AssemblyFullName = loaded.Assembly.FullName,
                     Generation = loaded.Generation,
                     RemovedPatchDescriptions = [.. removedPatches.Select(DescribePatch)],
+                    DiscoveredPatches =
+                        discoveredPatches.Count > 0 ? [.. discoveredPatches.Select(ToDto)] : null,
                 }
             );
             return true;
@@ -640,6 +643,24 @@ internal static class HotPatchEndpoints
             SourceAssemblyGeneration = patch.SourceAssemblyGeneration,
         };
     }
+
+    internal static DiscoveredPatchDto ToDto(DiscoveredPatch discovered) =>
+        new()
+        {
+            Target = new MethodRefDto
+            {
+                AssemblyFullName = discovered.Target.Module.Assembly.FullName,
+                MetadataToken = discovered.Target.MetadataToken,
+            },
+            TargetDescription = DescribeMethod(discovered.Target),
+            PatchMethod = new MethodRefDto
+            {
+                AssemblyFullName = discovered.PatchMethod.Module.Assembly.FullName,
+                MetadataToken = discovered.PatchMethod.MetadataToken,
+            },
+            PatchMethodDescription = DescribeMethod(discovered.PatchMethod),
+            PatchType = discovered.PatchType.ToString(),
+        };
 
     internal static string DescribePatch(OnTheFlyPatch patch) =>
         $"{patch.PatchType} on {DescribeMethod(patch.Target)}";

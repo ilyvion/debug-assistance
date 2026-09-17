@@ -189,6 +189,53 @@ describe('HotPatchView', () => {
         );
     });
 
+    it('shows the discovered-patches dialog when the load found pre-configured patches', async () => {
+        const wrapper = await mountPanel();
+        vi.mocked(loadHotPatchAssembly).mockResolvedValueOnce({
+            needsConfirmation: false,
+            assemblyName: 'MyPatch',
+            assemblyFullName: 'MyPatch, Version=0.0.0.0',
+            generation: 1,
+            removedPatchDescriptions: [],
+            discoveredPatches: [
+                {
+                    target: {
+                        assemblyFullName: 'Assembly-CSharp',
+                        metadataToken: 1,
+                    },
+                    targetDescription: 'Some.Type.Method',
+                    patchMethod: {
+                        assemblyFullName: 'MyPatch',
+                        metadataToken: 2,
+                    },
+                    patchMethodDescription: 'GeneratedPatch.Patches.Prefix',
+                    patchType: 'Prefix',
+                },
+            ],
+        });
+        vi.mocked(fetchLoadedHotPatchAssemblies).mockResolvedValueOnce([
+            { path: '/dev/patch.dll', assemblyName: 'MyPatch', generation: 1 },
+        ]);
+        await wrapper
+            .find('.assembly-section .path-input')
+            .setValue('/dev/patch.dll');
+        await wrapper.find('.assembly-section button.primary').trigger('click');
+        await flushMicrotasks();
+
+        expect(wrapper.find('.patch-list').exists()).toBe(true);
+        expect(wrapper.find('.patch-list').text()).toContain(
+            'Some.Type.Method',
+        );
+    });
+
+    it('does not show the discovered-patches dialog when the load found none', async () => {
+        const wrapper = await mountPanel();
+
+        await loadAssembly(wrapper);
+
+        expect(wrapper.find('.patch-list').exists()).toBe(false);
+    });
+
     it('asks for confirmation instead of silently removing patches when reloading a path that still has some active', async () => {
         const wrapper = await mountPanel();
 

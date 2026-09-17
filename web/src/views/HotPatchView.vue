@@ -15,6 +15,7 @@ import {
     removeManyHotPatches,
     scaffoldHotPatchProject,
 } from '../api';
+import DiscoveredPatchesDialog from '../components/DiscoveredPatchesDialog.vue';
 import FileBrowser from '../components/FileBrowser.vue';
 import MethodPicker from '../components/MethodPicker.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -25,6 +26,7 @@ import type {
     ActivePatch,
     ActiveProbe,
     BrowsedMethod,
+    DiscoveredPatch,
     HarmonyPatchTypeName,
     LoadedAssemblyEntry,
 } from '../types';
@@ -67,6 +69,13 @@ const pendingReload = ref<{ path: string; patches: string[] } | null>(null);
 const loadedAssemblies = ref<LoadedAssemblyEntry[]>([]);
 const showLoadedAssemblies = ref(false);
 const loadedAssembliesError = ref<string | null>(null);
+
+// Set right after a successful load/reload when PatchAttributeScanner found at least one
+// [Harmony*]-attributed method with a resolvable target -- offered as a checklist so the player
+// doesn't have to pick target/patch method/patch type by hand for a project that already carries
+// them.
+const discoveredPatches = ref<DiscoveredPatch[]>([]);
+const showDiscoveredPatches = ref(false);
 
 async function refreshLoadedAssemblies() {
     try {
@@ -249,6 +258,10 @@ async function loadAssembly(removeOldPatches?: boolean) {
         ) {
             removedNotice.value = result.removedPatchDescriptions;
             await refreshActive();
+        }
+        if (result.discoveredPatches && result.discoveredPatches.length > 0) {
+            discoveredPatches.value = result.discoveredPatches;
+            showDiscoveredPatches.value = true;
         }
     } catch (err) {
         loadError.value = describeError(err);
@@ -910,6 +923,14 @@ async function removeSelected() {
                 </div>
             </div>
         </div>
+
+        <DiscoveredPatchesDialog
+            v-if="showDiscoveredPatches && loadedPath"
+            :patches="discoveredPatches"
+            :source-assembly-path="loadedPath"
+            @close="showDiscoveredPatches = false"
+            @applied="refreshActive"
+        />
     </div>
 </template>
 

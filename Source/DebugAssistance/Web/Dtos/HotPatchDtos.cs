@@ -70,6 +70,9 @@ internal sealed record LoadAssemblyRequestDto
 // PatchesFromPreviousLoadDescriptions is populated, describing what a RemoveOldPatches: true
 // follow-up request would remove. Otherwise the load already happened and the remaining fields
 // describe its result, with RemovedPatchDescriptions empty unless RemoveOldPatches was true.
+// DiscoveredPatches is null/empty unless PatchAttributeScanner found at least one
+// [HarmonyPrefix]/[HarmonyPostfix]/[HarmonyTranspiler]/[HarmonyFinalizer]-attributed method with a
+// resolvable target in the freshly loaded assembly.
 internal sealed record LoadAssemblyResultDto
 {
     public required bool NeedsConfirmation { get; init; }
@@ -78,6 +81,7 @@ internal sealed record LoadAssemblyResultDto
     public string? AssemblyFullName { get; init; }
     public int? Generation { get; init; }
     public IReadOnlyList<string>? RemovedPatchDescriptions { get; init; }
+    public IReadOnlyList<DiscoveredPatchDto>? DiscoveredPatches { get; init; }
 }
 
 // One assembly path the player has already loaded this session, at its current generation --
@@ -105,6 +109,19 @@ internal sealed record MethodRefDto
 {
     public required string AssemblyFullName { get; init; }
     public required int MetadataToken { get; init; }
+}
+
+// One method PatchAttributeScanner found already carrying a resolvable [HarmonyPatch] target plus
+// a [HarmonyPrefix]/[HarmonyPostfix]/[HarmonyTranspiler]/[HarmonyFinalizer] attribute -- the same
+// Target/PatchMethod/PatchType shape ApplyPatchRequestDto expects, so applying one of these is a
+// direct pass-through to /api/hotpatch/apply.
+internal sealed record DiscoveredPatchDto
+{
+    public required MethodRefDto Target { get; init; }
+    public required string TargetDescription { get; init; }
+    public required MethodRefDto PatchMethod { get; init; }
+    public required string PatchMethodDescription { get; init; }
+    public required string PatchType { get; init; }
 }
 
 internal sealed record ApplyPatchRequestDto

@@ -381,24 +381,34 @@ internal static class ProjectScaffolder
             "namespace GeneratedPatch;",
             "",
             "// Delete whichever patch method(s) you don't need. Load the built DLL from",
-            "// DebugAssistance's Hot Patch panel and pick one of these as your Prefix/Postfix/",
-            "// Transpiler/Finalizer.",
+            "// DebugAssistance's Hot Patch panel: it detects the [Harmony*] attributes below and",
+            "// offers each one to apply directly, or pick target/patch method/patch type by hand.",
+        ]);
+        var classAttribute = BuildHarmonyPatchAttribute(targetMethod);
+        if (classAttribute.Length > 0)
+        {
+            lines.Add(classAttribute);
+        }
+        lines.AddRange([
             "internal static class Patches",
             "{",
             "    // Runs before the original method. Returning false skips the original method",
             "    // entirely.",
+            "    [HarmonyPrefix]",
             $"    internal static bool Prefix({BuildParameterList(targetMethod, includeResult: false)})",
             "    {",
             "        return true;",
             "    }",
             "",
             "    // Runs after the original method.",
+            "    [HarmonyPostfix]",
             $"    internal static void Postfix({BuildParameterList(targetMethod, includeResult: true)})",
             "    {",
             "    }",
             "",
             "    // Rewrites the original method's IL. `instructions` is the original method body;",
             "    // return it unchanged to make no changes.",
+            "    [HarmonyTranspiler]",
             "    internal static IEnumerable<CodeInstruction> Transpiler(",
             "        IEnumerable<CodeInstruction> instructions",
             "    )",
@@ -409,6 +419,7 @@ internal static class ProjectScaffolder
             "    // Runs after the original method (and after Postfix) even if it threw.",
             "    // `__exception` is the exception that was thrown, or null if the method completed",
             "    // normally; returning a non-null Exception replaces it, returning null swallows it.",
+            "    [HarmonyFinalizer]",
             "    internal static Exception? Finalizer(Exception? __exception)",
             "    {",
             "        return __exception;",
@@ -418,6 +429,24 @@ internal static class ProjectScaffolder
         ]);
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    // Emits the [HarmonyPatch(...)] class attribute reflecting the target method's own type and
+    // name, so PatchAttributeScanner can auto-detect this project's built assembly as already
+    // having a pre-configured target once it's (re)loaded. "" (and thus no attribute at all) when
+    // there's no target to reflect it from -- the from-scratch entry point, which has nothing to
+    // annotate with yet.
+    private static string BuildHarmonyPatchAttribute(MethodBase? targetMethod)
+    {
+        if (targetMethod is null || targetMethod.DeclaringType is not { } declaringType)
+        {
+            return "";
+        }
+
+        var typeExpr = CSharpTypeFormatter.FormatType(declaringType);
+        return targetMethod is ConstructorInfo
+            ? $"[HarmonyPatch(typeof({typeExpr}), MethodType.Constructor)]"
+            : $"[HarmonyPatch(typeof({typeExpr}), nameof({typeExpr}.{targetMethod.Name}))]";
     }
 
     private static string BuildHeaderComment(MethodBase? targetMethod, CapturedError? context)

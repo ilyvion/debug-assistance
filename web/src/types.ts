@@ -128,10 +128,24 @@ export interface CompatibleWith {
     patchType: HarmonyPatchTypeName;
 }
 
+// One method PatchAttributeScanner found already carrying a resolvable [HarmonyPatch] target plus
+// a [HarmonyPrefix]/[HarmonyPostfix]/[HarmonyTranspiler]/[HarmonyFinalizer] attribute -- the same
+// target/patchMethod/patchType shape applyHotPatch expects, so applying one is a direct
+// pass-through to it.
+export interface DiscoveredPatch {
+    target: MethodRef;
+    targetDescription: string;
+    patchMethod: MethodRef;
+    patchMethodDescription: string;
+    patchType: HarmonyPatchTypeName;
+}
+
 // When needsConfirmation is true, the load has not happened yet -- only
 // patchesFromPreviousLoadDescriptions is set, describing what a removeOldPatches: true follow-up
 // call would remove. Otherwise the load already happened and the remaining fields describe its
-// result.
+// result. discoveredPatches is unset/empty unless the freshly loaded assembly had at least one
+// [HarmonyPrefix]/[HarmonyPostfix]/[HarmonyTranspiler]/[HarmonyFinalizer]-attributed method with a
+// resolvable target.
 export interface LoadAssemblyResult {
     needsConfirmation: boolean;
     patchesFromPreviousLoadDescriptions?: string[];
@@ -139,6 +153,7 @@ export interface LoadAssemblyResult {
     assemblyFullName?: string;
     generation?: number;
     removedPatchDescriptions?: string[];
+    discoveredPatches?: DiscoveredPatch[];
 }
 
 // One assembly path already loaded this session, at its current generation -- offered by the
