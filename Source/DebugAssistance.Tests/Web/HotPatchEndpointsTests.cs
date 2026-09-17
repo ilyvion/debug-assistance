@@ -297,6 +297,22 @@ internal static class HotPatchEndpointsTests
         Assert.That(dto.IsStatic).Is.True();
     }
 
+    // A constructor's real Method.Name is ".ctor", which the frontend's match highlighting could
+    // never find inside the "TypeName(...)" signature FormatSignature displays for it -- MethodName
+    // must carry that same declaring-type name instead, not the raw CLR name.
+    [Test]
+    public static void ToDtoUsesTheDeclaringTypeNameAsMethodNameForAConstructor()
+    {
+        var assembly = LoadFixture(BuildFixtureAssembly());
+        var type = assembly.GetType("Fixture.Target");
+        var ctor = type.GetConstructor(Type.EmptyTypes);
+        var browsed = new BrowsedMethod(assembly, type, ctor);
+
+        var dto = HotPatchEndpoints.ToDto(browsed);
+
+        Assert.That(dto.MethodName).Is.EqualTo("Target");
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SomeTarget() { }
 

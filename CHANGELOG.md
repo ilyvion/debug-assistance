@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Applying a hot patch after reloading the same patch assembly several times in a row no longer sometimes fails with 'Unexpected null in ...' (or silently applies against a stale, previously-loaded version of your patch method).
 - In the Error Inspector's stack frame listing, each applied patch now shows its fully qualified type and method name instead of just the method name.
 - The Hot Patch view's target-method picker now lists constructors alongside ordinary methods, shown as `TypeName(parameters)`. Previously constructors never appeared in the list at all, so they couldn't be picked as a patch target.
+- Searching a type's own name plus its constructor (e.g. `Pawn.Pawn`) in the method pickers now finds its constructors, matching how searching just the type name alone already did. A type's static constructor is now shown as `static TypeName()` so it's no longer indistinguishable from its parameterless instance constructor.
 
 ## [0.1.0] - 2026-09-10
 

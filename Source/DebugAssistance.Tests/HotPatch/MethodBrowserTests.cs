@@ -176,6 +176,20 @@ internal static class MethodBrowserTests
         Assert.That(results[0].Method.Name).Is.EqualTo("Alpha");
     }
 
+    // Constructors are named ".ctor" by the CLR, not the type's own name -- a dotted filter like
+    // "Good.Good" must still match one, the same as a player typing a constructor call would
+    // expect, matched against the same declaring-type name FormatSignature displays for it.
+    [Test]
+    public static void BrowseWithADotFindsAConstructorViaTheDeclaringTypeName()
+    {
+        var assembly = LoadFixture(BuildFixtureAssembly());
+
+        var results = MethodBrowser.Browse([assembly], "Good.Good");
+
+        Assert.ThatCollection(results).Has.Count(1);
+        Assert.That(results[0].Method.Name).Is.EqualTo(".ctor");
+    }
+
     [Test]
     public static void BrowseWithADotFindsNothingWhenTheTypePartDoesNotMatch()
     {
@@ -410,5 +424,30 @@ internal static class MethodBrowserTests
         var signature = MethodBrowser.FormatSignature(ctor);
 
         Assert.That(signature).Is.EqualTo("WithConstructorParams(Int32 index, String label)");
+    }
+
+#pragma warning disable CA1810 // an explicit static constructor is the point of this fixture
+    private sealed class WithStaticConstructor
+    {
+        static WithStaticConstructor() { }
+    }
+#pragma warning restore CA1810
+
+    // A type's static constructor and its parameterless instance constructor would otherwise
+    // format identically ("WithStaticConstructor()" both), making them impossible to tell apart in
+    // the picker -- "static" is what distinguishes them.
+    [Test]
+    public static void FormatSignatureMarksAStaticConstructorAsStatic()
+    {
+        var cctor = typeof(WithStaticConstructor).GetConstructor(
+            BindingFlags.Static | BindingFlags.NonPublic,
+            null,
+            Type.EmptyTypes,
+            null
+        );
+
+        var signature = MethodBrowser.FormatSignature(cctor);
+
+        Assert.That(signature).Is.EqualTo("static WithStaticConstructor()");
     }
 }

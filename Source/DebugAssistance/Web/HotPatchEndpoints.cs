@@ -745,7 +745,11 @@ internal static class HotPatchEndpoints
             MetadataToken = method.Method.MetadataToken,
             DeclaringTypeName = method.DeclaringType.FullName ?? method.DeclaringType.Name,
             Namespace = method.DeclaringType.Namespace ?? "",
-            MethodName = method.Method.Name,
+            // A constructor's real Method.Name is ".ctor"/".cctor" -- MethodName instead carries
+            // whatever FormatSignature displays for it (the declaring type's own name), so the
+            // frontend's match highlighting has something to find inside the signature it shows.
+            MethodName =
+                method.Method is ConstructorInfo ? method.DeclaringType.Name : method.Method.Name,
             Signature = MethodBrowser.FormatSignature(method.Method),
             IsStatic = method.Method.IsStatic,
         };

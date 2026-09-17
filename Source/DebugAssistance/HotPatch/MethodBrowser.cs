@@ -89,9 +89,14 @@ internal static class MethodBrowser
 
                 foreach (var method in GetLoadableMethods(type))
                 {
+                    // A constructor's real Method.Name is ".ctor"/".cctor", which a filter like
+                    // "Pawn.Pawn" (or a bare method-name filter with a typeFilter already set)
+                    // could never match -- match against the same name FormatSignature displays
+                    // for it (the declaring type's own name) instead.
+                    var methodDisplayName = method is ConstructorInfo ? type.Name : method.Name;
                     var methodScore = methodFilter is null
                         ? 0
-                        : MatchScore(method.Name, methodFilter);
+                        : MatchScore(methodDisplayName, methodFilter);
                     if (methodFilter is not null && methodScore < 0 && typeNameMatchScore < 0)
                     {
                         continue;
@@ -202,7 +207,11 @@ internal static class MethodBrowser
         var parameters = string.Join(", ", method.GetParameters().Select(FormatParameter));
         if (method is ConstructorInfo)
         {
-            return $"{method.DeclaringType?.Name ?? method.Name}({parameters})";
+            // A type's static constructor and its parameterless instance constructor would
+            // otherwise format identically (both "TypeName()") -- "static" is what tells them
+            // apart in the picker.
+            var prefix = method.IsStatic ? "static " : "";
+            return $"{prefix}{method.DeclaringType?.Name ?? method.Name}({parameters})";
         }
 
         var returnTypeName = method is MethodInfo methodInfo
