@@ -14,6 +14,7 @@ import type {
     BrowsedMethod,
     CompatibleWith,
     HarmonyPatchTypeName,
+    MethodSearchScope,
     NamespaceEntry,
     TypeEntry,
 } from '../types';
@@ -156,6 +157,28 @@ function signatureSegments(method: BrowsedMethod): TextSegment[] {
     ];
 }
 
+// Wherever the tree navigation currently sits (assembly/namespace/type level), so a filter typed
+// at that point prioritizes methods declared there over equally-matching methods elsewhere --
+// browseLevel 0 (no selection yet, or the "All assemblies" root) means no scoping.
+function currentScope(): MethodSearchScope | null {
+    if (browseLevel.value < 1 || !selectedAssembly.value) {
+        return null;
+    }
+    if (browseLevel.value >= 3 && selectedType.value) {
+        return {
+            assemblyFullName: selectedAssembly.value.fullName,
+            typeFullName: selectedType.value.fullName,
+        };
+    }
+    if (browseLevel.value >= 2 && selectedNamespace.value) {
+        return {
+            assemblyFullName: selectedAssembly.value.fullName,
+            namespaceName: selectedNamespace.value.name,
+        };
+    }
+    return { assemblyFullName: selectedAssembly.value.fullName };
+}
+
 function compatibilityFilter(): CompatibleWith | null {
     return props.targetMethod && props.patchType
         ? {
@@ -196,6 +219,8 @@ async function search() {
             props.path,
             filterText.value.trim() || undefined,
             compatibilityFilter(),
+            0,
+            currentScope(),
         );
         if (sequence === searchSequence) {
             searchResults.value = result.methods;
@@ -226,6 +251,7 @@ async function loadMoreResults() {
             filterText.value.trim() || undefined,
             compatibilityFilter(),
             searchResultsLoaded,
+            currentScope(),
         );
         if (sequence === searchSequence) {
             searchResults.value = [...searchResults.value, ...result.methods];

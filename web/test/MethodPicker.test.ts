@@ -252,10 +252,55 @@ describe('MethodPicker', () => {
             '/dev/patch.dll',
             'Prefix',
             null,
+            0,
+            null,
         );
         expect(wrapper.find('.toolbar').exists()).toBe(false);
         expect(wrapper.find('.results button').text()).toContain(
             method.signature,
+        );
+    });
+
+    it('scopes a search typed while drilled into a type to that assembly/type', async () => {
+        vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([
+            assemblyEntry(),
+        ]);
+        const wrapper = mount(MethodPicker, {
+            props: { path: null, modelValue: null },
+        });
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchNamespaces).mockResolvedValueOnce([
+            namespaceEntry(),
+        ]);
+        await wrapper.find('.results button').trigger('click');
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchTypes).mockResolvedValueOnce([typeEntry()]);
+        await wrapper.find('.results button').trigger('click');
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchMethodsOfType).mockResolvedValueOnce([
+            methodEntry(),
+        ]);
+        await wrapper.find('.results button').trigger('click');
+        await flushMicrotasks();
+
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([methodEntry()]),
+        );
+        await wrapper.find('.filter-input').setValue('Draw');
+        await flushDebounce();
+
+        expect(fetchHotPatchMethods).toHaveBeenCalledWith(
+            null,
+            'Draw',
+            null,
+            0,
+            {
+                assemblyFullName: 'MyPatch, Version=0.0.0.0',
+                typeFullName: 'MyPatch.Fixes.SomeFix',
+            },
         );
     });
 
@@ -346,6 +391,7 @@ describe('MethodPicker', () => {
             'Prefix',
             null,
             1,
+            null,
         );
         const rows = wrapper.findAll('.results button');
         expect(rows).toHaveLength(2);
@@ -460,6 +506,8 @@ describe('MethodPicker', () => {
                 },
                 patchType: 'Postfix',
             },
+            0,
+            null,
         );
     });
 
@@ -498,6 +546,8 @@ describe('MethodPicker', () => {
                 },
                 patchType: 'Postfix',
             },
+            0,
+            null,
         );
     });
 

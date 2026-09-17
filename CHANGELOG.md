@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In the Error Inspector's stack frame listing, each applied patch now shows its fully qualified type and method name instead of just the method name.
 - The Hot Patch view's target-method picker now lists constructors alongside ordinary methods, shown as `TypeName(parameters)`. Previously constructors never appeared in the list at all, so they couldn't be picked as a patch target.
 - Searching a type's own name plus its constructor (e.g. `Pawn.Pawn`) in the method pickers now finds its constructors, matching how searching just the type name alone already did. A type's static constructor is now shown as `static TypeName()` so it's no longer indistinguishable from its parameterless instance constructor.
+- Searching in the target-method or patch-method picker while browsing inside a specific assembly, namespace, or type now puts methods declared there ahead of equally-matching methods elsewhere, instead of treating every loaded method as equally relevant. For example, searching "Draw" while browsing `Pawn`'s own methods now puts `Pawn.Draw` ahead of an unrelated `DrawStyle.Draw`.
 
 ## [0.1.0] - 2026-09-10
 

@@ -543,6 +543,8 @@ describe('HotPatchView', () => {
                 },
                 patchType: 'Prefix',
             },
+            0,
+            null,
         );
     });
 
@@ -581,6 +583,8 @@ describe('HotPatchView', () => {
         expect(fetchHotPatchMethods).toHaveBeenLastCalledWith(
             '/dev/patch.dll',
             'Prefix',
+            null,
+            0,
             null,
         );
     });

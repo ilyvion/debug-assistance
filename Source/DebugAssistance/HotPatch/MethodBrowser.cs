@@ -13,6 +13,17 @@ internal readonly record struct BrowsedMethod(
 // Name is "" for types declared outside any namespace, which is itself a valid, browsable group.
 internal readonly record struct BrowsedNamespace(string Name, int TypeCount);
 
+// Where in the Assembly -> Namespace -> Type tree a flat search is being issued from, so Browse
+// can rank methods declared there above equally-matching methods declared elsewhere instead of
+// treating every loaded type as equally relevant. Only the deepest set field is checked --
+// TypeFullName implies AssemblyFullName is also set (a type can't be scoped without its assembly),
+// same for Namespace.
+internal readonly record struct BrowseScope(
+    string? AssemblyFullName,
+    string? Namespace,
+    string? TypeFullName
+);
+
 // Enumerates types/methods across a set of assemblies for both hot-patch pickers: the
 // target-method picker (every currently loaded assembly) and the patch-method picker (just the
 // one player-loaded assembly, since the player must say which of its methods is the
@@ -45,10 +56,14 @@ internal static class MethodBrowser
     // camelCase/namespace word boundary, then a bare substring anywhere) before being returned, so
     // e.g. "pawn.kill" puts Pawn.Kill itself ahead of Pawn methods that merely contain "kill" as
     // a substring (like DoKillSideEffects) or types that merely contain "pawn" (like
-    // StartingPawnUtility).
+    // StartingPawnUtility). Methods declared within `scope` (wherever the picker's tree navigation
+    // currently sits) always rank above equally-matching methods outside it, so e.g. searching
+    // "Draw" while browsing Pawn's methods puts Pawn.Draw ahead of an unrelated DrawStyle.Draw
+    // instead of leaving them tied.
     internal static List<BrowsedMethod> Browse(
         IEnumerable<Assembly> assemblies,
-        string? nameFilter = null
+        string? nameFilter = null,
+        BrowseScope scope = default
     )
     {
         string? typeFilter = null;
@@ -63,11 +78,12 @@ internal static class MethodBrowser
             }
         }
 
-        List<(int Score, BrowsedMethod Method)> scored = [];
+        List<(int Score, bool InScope, BrowsedMethod Method)> scored = [];
         foreach (var assembly in assemblies)
         {
             foreach (var type in GetLoadableTypes(assembly))
             {
+                var inScope = IsInScope(assembly, type, scope);
                 var typeName = type.FullName ?? type.Name;
                 var typeScore = 0;
                 if (typeFilter is not null)
@@ -106,7 +122,7 @@ internal static class MethodBrowser
                         Math.Max(typeScore, 0)
                         + Math.Max(methodScore, 0)
                         + Math.Max(typeNameMatchScore, 0);
-                    scored.Add((score, new BrowsedMethod(assembly, type, method)));
+                    scored.Add((score, inScope, new BrowsedMethod(assembly, type, method)));
                 }
             }
         }
@@ -114,7 +130,8 @@ internal static class MethodBrowser
         return
         [
             .. scored
-                .OrderByDescending(entry => entry.Score)
+                .OrderByDescending(entry => entry.InScope)
+                .ThenByDescending(entry => entry.Score)
                 .ThenBy(
                     entry => entry.Method.DeclaringType.FullName ?? entry.Method.DeclaringType.Name,
                     StringComparer.OrdinalIgnoreCase
@@ -123,6 +140,17 @@ internal static class MethodBrowser
                 .Select(entry => entry.Method),
         ];
     }
+
+    // Whether `type` (declared in `assembly`) falls under `scope`'s current tree position. Only
+    // the deepest field scope sets is checked -- a default BrowseScope (nothing selected, e.g. the
+    // "All assemblies" root) matches everything, so it never reorders results.
+    private static bool IsInScope(Assembly assembly, Type type, BrowseScope scope) =>
+        scope.TypeFullName is not null
+            ? assembly.FullName == scope.AssemblyFullName && type.FullName == scope.TypeFullName
+        : scope.Namespace is not null
+            ? assembly.FullName == scope.AssemblyFullName
+                && (type.Namespace ?? "") == scope.Namespace
+        : scope.AssemblyFullName is null || assembly.FullName == scope.AssemblyFullName;
 
     // How well `filter` matches `candidate`, or -1 if it doesn't match at all (a plain
     // case-insensitive substring check, same as before). Among matches, an exact name match ranks

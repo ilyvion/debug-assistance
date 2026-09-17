@@ -16,6 +16,7 @@ import type {
     LoadedAssemblyEntry,
     MethodRef,
     MethodSearchResult,
+    MethodSearchScope,
     ModSettings,
     NamespaceEntry,
     ProbeDetail,
@@ -276,11 +277,30 @@ function setCompatibilityParams(
     params.set('patchType', compatibleWith.patchType);
 }
 
+// Sends only the deepest field of `scope` -- the backend only ever checks the deepest one it's
+// given, and namespaceName/typeFullName are meaningless without the assembly they were browsed
+// under, which assemblyFullName is required to carry alongside them.
+function setScopeParams(
+    params: URLSearchParams,
+    scope?: MethodSearchScope | null,
+) {
+    if (!scope) {
+        return;
+    }
+    params.set('scopeAssemblyFullName', scope.assemblyFullName);
+    if (scope.typeFullName !== undefined) {
+        params.set('scopeTypeFullName', scope.typeFullName);
+    } else if (scope.namespaceName !== undefined) {
+        params.set('scopeNamespace', scope.namespaceName);
+    }
+}
+
 export async function fetchHotPatchMethods(
     path: string | null,
     filter?: string,
     compatibleWith?: CompatibleWith | null,
     offset = 0,
+    scope?: MethodSearchScope | null,
 ): Promise<MethodSearchResult> {
     const params = new URLSearchParams();
     if (path !== null) {
@@ -293,6 +313,7 @@ export async function fetchHotPatchMethods(
         params.set('offset', String(offset));
     }
     setCompatibilityParams(params, compatibleWith);
+    setScopeParams(params, scope);
     const query = params.toString();
     return getJson<MethodSearchResult>(
         `/api/hotpatch/methods${query ? `?${query}` : ''}`,

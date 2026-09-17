@@ -136,6 +136,15 @@ export interface CompatibleWith {
     patchType: HarmonyPatchTypeName;
 }
 
+// Where in the Assembly -> Namespace -> Type tree a method search is being issued from, so
+// results declared there rank above equally-matching results elsewhere. assemblyFullName is
+// required whenever this is set at all; namespaceName/typeFullName narrow it further.
+export interface MethodSearchScope {
+    assemblyFullName: string;
+    namespaceName?: string;
+    typeFullName?: string;
+}
+
 // One method PatchAttributeScanner found already carrying a resolvable [HarmonyPatch] target plus
 // a [HarmonyPrefix]/[HarmonyPostfix]/[HarmonyTranspiler]/[HarmonyFinalizer] attribute -- the same
 // target/patchMethod/patchType shape applyHotPatch expects, so applying one is a direct

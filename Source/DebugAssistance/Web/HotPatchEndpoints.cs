@@ -125,6 +125,11 @@ internal static class HotPatchEndpoints
         var assemblyFullName = query["assemblyFullName"];
         var typeFullName = query["typeFullName"];
         var compatibleWith = ResolveCompatibilityFilter(query);
+        var scope = new BrowseScope(
+            query["scopeAssemblyFullName"],
+            query["scopeNamespace"],
+            query["scopeTypeFullName"]
+        );
 
         // The tree picker's leaf level: it already knows exactly which type it's listing members
         // of, so this takes precedence over the flat path/filter search below.
@@ -181,14 +186,14 @@ internal static class HotPatchEndpoints
             offset = 0;
         }
 
-        var cacheKey = BuildSearchCacheKey(path, filter, compatibleWith);
+        var cacheKey = BuildSearchCacheKey(path, filter, compatibleWith, scope);
         var methods = MethodSearchCache.TryGet(
             cacheKey,
             DebugAssistanceMod.Settings.SearchCacheTtlSeconds
         );
         if (methods is null)
         {
-            methods = MethodBrowser.Browse(assemblies, filter);
+            methods = MethodBrowser.Browse(assemblies, filter, scope);
             if (compatibleWith is { } compatForSearch)
             {
                 methods = [.. methods.Where(method => IsCompatible(method, compatForSearch))];
@@ -220,20 +225,21 @@ internal static class HotPatchEndpoints
     internal const int SearchPageSize = 10;
 
     // The cache key is just the search's own parameters -- an identical search (same path, filter,
-    // and compatibility target/patch type) always maps to the same key, so re-issuing it (e.g.
-    // paging, or typing "foo" -> "foobar" -> back to "foo") reuses the cached result for as long as
-    // it stays in MethodSearchCache. '\0' can't appear in any of these parts, so it's safe as a
-    // separator between them.
+    // scope, and compatibility target/patch type) always maps to the same key, so re-issuing it
+    // (e.g. paging, or typing "foo" -> "foobar" -> back to "foo") reuses the cached result for as
+    // long as it stays in MethodSearchCache. '\0' can't appear in any of these parts, so it's safe
+    // as a separator between them.
     internal static string BuildSearchCacheKey(
         string? path,
         string? filter,
-        (MethodBase Target, OnTheFlyPatchType PatchType)? compatibleWith
+        (MethodBase Target, OnTheFlyPatchType PatchType)? compatibleWith,
+        BrowseScope scope
     )
     {
         var compatPart = compatibleWith is { } compat
             ? $"{compat.Target.Module.Assembly.FullName}\0{compat.Target.MetadataToken}\0{compat.PatchType}"
             : "";
-        return $"{path}\0{filter}\0{compatPart}";
+        return $"{path}\0{filter}\0{compatPart}\0{scope.AssemblyFullName}\0{scope.Namespace}\0{scope.TypeFullName}";
     }
 
     // Opportunistic: only filters when the picker already knows a target method and patch type

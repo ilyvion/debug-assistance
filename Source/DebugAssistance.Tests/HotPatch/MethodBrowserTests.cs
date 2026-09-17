@@ -99,6 +99,19 @@ internal static class MethodBrowserTests
         );
         _ = rankedType.CreateType();
 
+        // For scope tests: a same-named "Kill" method on an unrelated type, so a scope that
+        // narrows to Ranked can be checked to rank Ranked.Kill above this equally-scoring one.
+        var otherType = moduleBuilder.DefineType(
+            "Fixture.Other",
+            TypeAttributes.Public | TypeAttributes.Class
+        );
+        DefineParameterlessMethod(
+            otherType,
+            "Kill",
+            MethodAttributes.Public | MethodAttributes.Static
+        );
+        _ = otherType.CreateType();
+
         assemblyBuilder.Save(fileName);
 
         return new Fixture(Path.Combine(dir, fileName));
@@ -296,6 +309,65 @@ internal static class MethodBrowserTests
     }
 
     [Test]
+    public static void BrowseRanksATypeScopedMatchAboveAnEquallyScoringMatchOutsideIt()
+    {
+        var assembly = LoadFixture(BuildFixtureAssembly());
+
+        var results = MethodBrowser.Browse(
+            [assembly],
+            "Kill",
+            new BrowseScope(assembly.FullName, null, "Fixture.Ranked")
+        );
+
+        var rankedIndex = results.FindIndex(r =>
+            r.DeclaringType.FullName == "Fixture.Ranked" && r.Method.Name == "Kill"
+        );
+        var otherIndex = results.FindIndex(r =>
+            r.DeclaringType.FullName == "Fixture.Other" && r.Method.Name == "Kill"
+        );
+        Assert.That(rankedIndex).Is.GreaterThan(-1);
+        Assert.That(otherIndex).Is.GreaterThan(-1);
+        Assert.That(rankedIndex).Is.LessThan(otherIndex);
+    }
+
+    [Test]
+    public static void BrowseRanksAnAssemblyScopedMatchAboveAnEquallyScoringMatchInAnotherAssembly()
+    {
+        var assemblyA = LoadFixture(BuildFixtureAssembly());
+        var assemblyB = LoadFixture(BuildFixtureAssembly());
+
+        var results = MethodBrowser.Browse(
+            [assemblyA, assemblyB],
+            "Alpha",
+            new BrowseScope(assemblyB.FullName, null, null)
+        );
+
+        Assert.ThatCollection(results).Has.Count(2);
+        Assert.That(results[0].Assembly.FullName).Is.EqualTo(assemblyB.FullName);
+        Assert.That(results[1].Assembly.FullName).Is.EqualTo(assemblyA.FullName);
+    }
+
+    [Test]
+    public static void BrowseWithNoScopeSelectedDoesNotReorderEquallyScoringMatches()
+    {
+        var assembly = LoadFixture(BuildFixtureAssembly());
+
+        var results = MethodBrowser.Browse([assembly], "Kill");
+
+        // Same fixture as the type-scoped test above, but with a default (unset) BrowseScope --
+        // both "Kill" methods are exact matches, so their relative order falls back to the existing
+        // declaring-type-name tiebreaker ("Other" before "Ranked" alphabetically) rather than
+        // whichever scope happened to be selected.
+        var otherIndex = results.FindIndex(r =>
+            r.DeclaringType.FullName == "Fixture.Other" && r.Method.Name == "Kill"
+        );
+        var rankedIndex = results.FindIndex(r =>
+            r.DeclaringType.FullName == "Fixture.Ranked" && r.Method.Name == "Kill"
+        );
+        Assert.That(otherIndex).Is.LessThan(rankedIndex);
+    }
+
+    [Test]
     public static void BrowseNamespacesGroupsTypesByNamespaceWithCounts()
     {
         var assembly = LoadFixture(BuildFixtureAssembly());
@@ -303,7 +375,7 @@ internal static class MethodBrowserTests
         var namespaces = MethodBrowser.BrowseNamespaces(assembly);
 
         var fixtureNamespace = namespaces.Single(ns => ns.Name == "Fixture");
-        Assert.That(fixtureNamespace.TypeCount).Is.EqualTo(6);
+        Assert.That(fixtureNamespace.TypeCount).Is.EqualTo(7);
     }
 
     [Test]

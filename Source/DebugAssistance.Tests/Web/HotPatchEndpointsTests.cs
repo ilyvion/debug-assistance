@@ -785,30 +785,44 @@ internal static class HotPatchEndpointsTests
     // Regression coverage for the cache key: an identical search must reuse MethodSearchCache's
     // entry across requests (verified directly against BuildSearchCacheKey here since the HTTP
     // endpoint gives no externally visible sign of a cache hit vs. miss), while a different filter,
-    // path, or compatibility target must not collide with it.
+    // path, scope, or compatibility target must not collide with it.
     [Test]
     public static void BuildSearchCacheKeyMatchesOnlyForIdenticalSearchParameters()
     {
         var target = AccessTools.Method(typeof(HotPatchEndpointsTests), nameof(SomeTarget));
 
-        var key = HotPatchEndpoints.BuildSearchCacheKey("/dev/patch.dll", "foo", null);
-        var sameKey = HotPatchEndpoints.BuildSearchCacheKey("/dev/patch.dll", "foo", null);
+        var key = HotPatchEndpoints.BuildSearchCacheKey("/dev/patch.dll", "foo", null, default);
+        var sameKey = HotPatchEndpoints.BuildSearchCacheKey("/dev/patch.dll", "foo", null, default);
         var differentFilter = HotPatchEndpoints.BuildSearchCacheKey(
             "/dev/patch.dll",
             "foobar",
-            null
+            null,
+            default
         );
-        var differentPath = HotPatchEndpoints.BuildSearchCacheKey("/dev/other.dll", "foo", null);
+        var differentPath = HotPatchEndpoints.BuildSearchCacheKey(
+            "/dev/other.dll",
+            "foo",
+            null,
+            default
+        );
         var withCompat = HotPatchEndpoints.BuildSearchCacheKey(
             "/dev/patch.dll",
             "foo",
-            (target, OnTheFlyPatchType.Prefix)
+            (target, OnTheFlyPatchType.Prefix),
+            default
+        );
+        var withScope = HotPatchEndpoints.BuildSearchCacheKey(
+            "/dev/patch.dll",
+            "foo",
+            null,
+            new BrowseScope("SomeAssembly", null, null)
         );
 
         Assert.That(key).Is.EqualTo(sameKey);
         Assert.That(key).Is.Not.EqualTo(differentFilter);
         Assert.That(key).Is.Not.EqualTo(differentPath);
         Assert.That(key).Is.Not.EqualTo(withCompat);
+        Assert.That(key).Is.Not.EqualTo(withScope);
     }
 
     [Test]
