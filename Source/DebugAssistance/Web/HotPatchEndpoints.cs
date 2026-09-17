@@ -439,12 +439,9 @@ internal static class HotPatchEndpoints
             return ctx.Response.WriteJsonError(400, "Request body is required");
         }
 
-        if (body.Target is null || body.PatchMethod is null || body.SourceAssemblyPath is null)
+        if (body.Target is null || body.PatchMethod is null)
         {
-            return ctx.Response.WriteJsonError(
-                400,
-                "target, patchMethod, and sourceAssemblyPath are required"
-            );
+            return ctx.Response.WriteJsonError(400, "target and patchMethod are required");
         }
 
         if (!TryParsePatchType(body.PatchType, out var patchType))
@@ -455,37 +452,67 @@ internal static class HotPatchEndpoints
             );
         }
 
-        var loadedPatchAssembly = DebugAssistanceMod.LiveAssemblyLoader.GetLoaded(
-            body.SourceAssemblyPath
-        );
-        if (loadedPatchAssembly is not { } loaded)
-        {
-            return ctx.Response.WriteJsonError(
-                400,
-                "sourceAssemblyPath is not currently loaded — load it first"
-            );
-        }
-
         var target = ResolveMethod(
             ResolveAssemblyByFullName(body.Target.AssemblyFullName),
             body.Target.MetadataToken
         );
-
-        if (
-            target is null
-            || ResolveMethod(loaded.Assembly, body.PatchMethod.MetadataToken)
-                is not MethodInfo patchMethod
-        )
+        if (target is null)
         {
-            return ctx.Response.WriteJsonError(404, "Target or patch method could not be resolved");
+            return ctx.Response.WriteJsonError(404, "Target method could not be resolved");
+        }
+
+        string sourceAssemblyPath;
+        int sourceAssemblyGeneration;
+        MethodInfo patchMethod;
+        if (body.SourceAssemblyPath is { } requestedSourceAssemblyPath)
+        {
+            var loadedPatchAssembly = DebugAssistanceMod.LiveAssemblyLoader.GetLoaded(
+                requestedSourceAssemblyPath
+            );
+            if (loadedPatchAssembly is not { } loaded)
+            {
+                return ctx.Response.WriteJsonError(
+                    400,
+                    "sourceAssemblyPath is not currently loaded — load it first"
+                );
+            }
+            if (
+                ResolveMethod(loaded.Assembly, body.PatchMethod.MetadataToken)
+                is not MethodInfo resolvedPatchMethod
+            )
+            {
+                return ctx.Response.WriteJsonError(404, "Patch method could not be resolved");
+            }
+
+            sourceAssemblyPath = requestedSourceAssemblyPath;
+            sourceAssemblyGeneration = loaded.Generation;
+            patchMethod = resolvedPatchMethod;
+        }
+        // No SourceAssemblyPath: a convenience patch, whose patch method already lives in an
+        // assembly resolvable straight off the AppDomain -- DebugAssistance itself, a running mod,
+        // or a loaded hot-patch assembly -- the same way the target method above always is.
+        else
+        {
+            var patchMethodAssembly = ResolveAssemblyByFullName(body.PatchMethod.AssemblyFullName);
+            if (
+                ResolveMethod(patchMethodAssembly, body.PatchMethod.MetadataToken)
+                is not MethodInfo resolvedPatchMethod
+            )
+            {
+                return ctx.Response.WriteJsonError(404, "Patch method could not be resolved");
+            }
+
+            sourceAssemblyPath = patchMethodAssembly!.Location;
+            sourceAssemblyGeneration = 0;
+            patchMethod = resolvedPatchMethod;
         }
 
         var (patch, error) = DebugAssistanceMod.HotPatchManager.Apply(
             target,
             patchMethod,
             patchType,
-            body.SourceAssemblyPath,
-            loaded.Generation
+            sourceAssemblyPath,
+            sourceAssemblyGeneration
         );
 
         ctx.Response.WriteJson(
@@ -497,6 +524,51 @@ internal static class HotPatchEndpoints
             }
         );
         return true;
+    }
+
+    // GET /api/hotpatch/convenience-patches: every [ConveniencePatch]-attributed method
+    // ConveniencePatchRegistry currently knows about, optionally narrowed to the ones compatible
+    // with a given target method (targetAssemblyFullName/targetMetadataToken) the same way the
+    // patch-method picker narrows to PatchCompatibility.IsCompatible -- each entry checked against
+    // its own PatchType rather than one shared across the whole list, since (unlike the
+    // patch-method picker) every convenience patch already has its own fixed patch type.
+    internal static bool ServeConveniencePatches(HttpListenerContext ctx)
+    {
+        var target = ResolveConveniencePatchTargetFilter(ctx.Request.QueryString);
+        var patches = DebugAssistanceMod.ConveniencePatchRegistry.All;
+        if (target is { } t)
+        {
+            patches = [.. patches.Where(patch => IsCompatible(t, patch))];
+        }
+
+        ctx.Response.WriteJson(
+            new ConveniencePatchListDto { Patches = [.. patches.Select(ToDto)] }
+        );
+        return true;
+    }
+
+    // POST /api/hotpatch/convenience-patches/rescan: the hot-patch panel's "Rescan" button --
+    // re-scans DebugAssistance's own built-ins, every running mod, and every loaded hot-patch
+    // assembly, then responds with the same shape ServeConveniencePatches does (optionally
+    // target-filtered the same way) so the panel can just replace its list with the response.
+    internal static bool ServeRescanConveniencePatches(HttpListenerContext ctx)
+    {
+        DebugAssistanceMod.ConveniencePatchRegistry.Rescan();
+        return ServeConveniencePatches(ctx);
+    }
+
+    private static bool IsCompatible(MethodBase target, ConveniencePatch patch) =>
+        PatchCompatibility.IsCompatible(target, patch.PatchMethod, patch.PatchType);
+
+    private static MethodBase? ResolveConveniencePatchTargetFilter(NameValueCollection query)
+    {
+        var targetAssemblyFullName = query["targetAssemblyFullName"];
+        var targetMetadataTokenText = query["targetMetadataToken"];
+        return
+            string.IsNullOrEmpty(targetAssemblyFullName)
+            || !int.TryParse(targetMetadataTokenText, out var metadataToken)
+            ? null
+            : ResolveMethod(ResolveAssemblyByFullName(targetAssemblyFullName), metadataToken);
     }
 
     // POST /api/hotpatch/remove-many: the "Remove" action in the active-patches list, for both a
@@ -710,6 +782,24 @@ internal static class HotPatchEndpoints
             PatchMethodDescription = DescribeMethod(discovered.PatchMethod),
             PatchType = discovered.PatchType.ToString(),
         };
+
+    internal static ConveniencePatchDto ToDto(ConveniencePatch patch)
+    {
+        var patchAssembly = patch.PatchMethod.Module.Assembly;
+        return new ConveniencePatchDto
+        {
+            Name = patch.Name,
+            Description = patch.Description,
+            PatchType = patch.PatchType.ToString(),
+            PatchMethod = new MethodRefDto
+            {
+                AssemblyFullName = patchAssembly.FullName,
+                MetadataToken = patch.PatchMethod.MetadataToken,
+            },
+            PatchMethodDescription = DescribeMethod(patch.PatchMethod),
+            SourceAssemblyName = patchAssembly.GetName().Name ?? patchAssembly.FullName,
+        };
+    }
 
     internal static string DescribePatch(OnTheFlyPatch patch) =>
         $"{patch.PatchType} on {DescribeMethod(patch.Target)}";

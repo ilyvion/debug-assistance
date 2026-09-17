@@ -138,6 +138,7 @@ internal sealed class DebugAssistanceServer(
                 "types" => HotPatchEndpoints.ServeTypeList(ctx),
                 "active" => HotPatchEndpoints.ServeActivePatches(ctx),
                 "loaded-assemblies" => HotPatchEndpoints.ServeLoadedAssemblies(ctx),
+                "convenience-patches" => HotPatchEndpoints.ServeConveniencePatches(ctx),
                 _ => WriteNotFound(ctx),
             },
             ("hotpatch", 4) when parts[2] == "scaffold" && parts[3] == "suggested-name" =>
@@ -212,6 +213,8 @@ internal sealed class DebugAssistanceServer(
             ),
             ("hotpatch", _, _, 3) when parts[2] == "debug-prompt" =>
                 PromptEndpoints.ServeHotPatchDebugPrompt(ctx),
+            ("hotpatch", "rescan", null, 4) when parts[2] == "convenience-patches" =>
+                HotPatchEndpoints.ServeRescanConveniencePatches(ctx),
             ("probes", _, _, 3) when parts[2] == "active" => ProbesEndpoints.ServeAddProbe(ctx),
             ("probes", "frames", "decompile", 6) => ProbeDecompileEndpoints.ServeDecompileFrame(
                 ctx,

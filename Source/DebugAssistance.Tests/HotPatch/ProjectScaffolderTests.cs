@@ -205,15 +205,30 @@ internal static class ProjectScaffolderTests
             .Is.True();
     }
 
+    // DebugAssistance's own assembly is always referenced (so [ConveniencePatch] is available even
+    // without a target method), but nothing target-dependent should be added without one.
     [Test]
-    public static void ScaffoldedCsprojHasNoExtraReferenceItemGroupWithoutATargetMethod()
+    public static void ScaffoldedCsprojReferencesOnlyDebugAssistanceWithoutATargetMethod()
     {
         var dir = UniqueFixtureDirectory();
+        var debugAssistanceAssembly = typeof(ProjectScaffolder).Assembly;
 
         _ = ProjectScaffolder.Scaffold(dir, "MyPatch", null, null);
 
         var csproj = File.ReadAllText(Path.Combine(dir, "MyPatch", "MyPatch.csproj"));
-        Assert.That(csproj.Contains("<Reference Include=", StringComparison.Ordinal)).Is.False();
+        var referenceTag = $"<Reference Include=\"{debugAssistanceAssembly.GetName().Name}\">";
+        Assert.That(csproj.Contains(referenceTag, StringComparison.Ordinal)).Is.True();
+
+        var index = 0;
+        var count = 0;
+        while (
+            (index = csproj.IndexOf("<Reference Include=", index, StringComparison.Ordinal)) >= 0
+        )
+        {
+            count++;
+            index++;
+        }
+        Assert.That(count).Is.EqualTo(1);
     }
 
     // SignatureFixtureMethods lives in this test assembly, which -- like any third-party mod

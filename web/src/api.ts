@@ -6,6 +6,7 @@ import type {
     AssemblyEntry,
     BrowsedMethod,
     CompatibleWith,
+    ConveniencePatch,
     DecompileResult,
     ErrorDetail,
     ErrorListEntry,
@@ -355,18 +356,53 @@ export async function fetchHotPatchMethodsOfType(
     return data.methods;
 }
 
+// sourceAssemblyPath is omitted for a convenience patch -- its patchMethod already lives in an
+// assembly resolvable straight off the server's AppDomain, so there's no loaded hot-patch assembly
+// path to name (see HotPatchDtos.ApplyPatchRequestDto's remarks).
 export async function applyHotPatch(
     target: MethodRef,
     patchMethod: MethodRef,
     patchType: HarmonyPatchTypeName,
-    sourceAssemblyPath: string,
+    sourceAssemblyPath?: string,
 ): Promise<ApplyPatchResult> {
     return postJson('/api/hotpatch/apply', {
         target,
         patchMethod,
         patchType,
-        sourceAssemblyPath,
+        sourceAssemblyPath: sourceAssemblyPath ?? null,
     });
+}
+
+function conveniencePatchTargetParams(
+    target?: MethodRef | null,
+): URLSearchParams {
+    const params = new URLSearchParams();
+    if (target) {
+        params.set('targetAssemblyFullName', target.assemblyFullName);
+        params.set('targetMetadataToken', String(target.metadataToken));
+    }
+    return params;
+}
+
+export async function fetchConveniencePatches(
+    target?: MethodRef | null,
+): Promise<ConveniencePatch[]> {
+    const query = conveniencePatchTargetParams(target).toString();
+    const data = await getJson<{ patches: ConveniencePatch[] }>(
+        `/api/hotpatch/convenience-patches${query ? `?${query}` : ''}`,
+    );
+    return data.patches;
+}
+
+export async function rescanConveniencePatches(
+    target?: MethodRef | null,
+): Promise<ConveniencePatch[]> {
+    const query = conveniencePatchTargetParams(target).toString();
+    const data = await postJson<{ patches: ConveniencePatch[] }>(
+        `/api/hotpatch/convenience-patches/rescan${query ? `?${query}` : ''}`,
+        {},
+    );
+    return data.patches;
 }
 
 export async function removeManyHotPatches(ids: string[]): Promise<string[]> {

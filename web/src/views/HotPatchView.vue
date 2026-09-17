@@ -13,6 +13,7 @@ import {
     removeActiveProbe,
     scaffoldHotPatchProject,
 } from '../api';
+import ConveniencePatchesDialog from '../components/ConveniencePatchesDialog.vue';
 import DiscoveredPatchesDialog from '../components/DiscoveredPatchesDialog.vue';
 import FileBrowser from '../components/FileBrowser.vue';
 import MethodPicker from '../components/MethodPicker.vue';
@@ -79,6 +80,11 @@ const loadedAssembliesError = ref<string | null>(null);
 // them.
 const discoveredPatches = ref<DiscoveredPatch[]>([]);
 const showDiscoveredPatches = ref(false);
+
+// Opened from either the patch-method section (once an assembly is loaded) or the placeholder in
+// its place (before one is) -- convenience patches need only a target method, never a loaded
+// hot-patch assembly.
+const showConveniencePatches = ref(false);
 
 async function refreshLoadedAssemblies() {
     try {
@@ -822,6 +828,15 @@ async function onPatchesRemoved() {
                                 </label>
                             </div>
 
+                            <button
+                                type="button"
+                                class="convenience-patches-button"
+                                :disabled="!targetMethod"
+                                @click="showConveniencePatches = true"
+                            >
+                                {{ t('HotPatch.BrowseConveniencePatches') }}
+                            </button>
+
                             <label class="patch-type-label">
                                 {{ t('HotPatch.PatchTypeLabel') }}
                                 <select v-model="patchType">
@@ -889,6 +904,13 @@ async function onPatchesRemoved() {
                         <p class="status empty">
                             {{ t('HotPatch.PatchMethodNeedsAssembly') }}
                         </p>
+                        <button
+                            type="button"
+                            :disabled="!targetMethod"
+                            @click="showConveniencePatches = true"
+                        >
+                            {{ t('HotPatch.BrowseConveniencePatches') }}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -907,6 +929,16 @@ async function onPatchesRemoved() {
             :patches="removeDialogPatches"
             @close="removeDialogPatches = null"
             @removed="onPatchesRemoved"
+        />
+
+        <ConveniencePatchesDialog
+            v-if="showConveniencePatches && targetMethod"
+            :target="{
+                assemblyFullName: targetMethod.assemblyFullName,
+                metadataToken: targetMethod.metadataToken,
+            }"
+            @close="showConveniencePatches = false"
+            @applied="refreshActive"
         />
     </div>
 </template>
@@ -1001,6 +1033,7 @@ async function onPatchesRemoved() {
 .placeholder-pane {
     align-items: center;
     justify-content: center;
+    gap: 8px;
     background: transparent;
     border-style: dashed;
     text-align: center;
@@ -1059,6 +1092,10 @@ section h4 {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+}
+
+.convenience-patches-button {
+    margin-bottom: 8px;
 }
 
 .patch-type-label {

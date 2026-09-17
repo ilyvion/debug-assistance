@@ -157,6 +157,11 @@
     <DebugAssistance.FrontEnd.HotPatch.Close>Close</DebugAssistance.FrontEnd.HotPatch.Close>
     <DebugAssistance.FrontEnd.HotPatch.RemovePatchesTitle>Remove patches</DebugAssistance.FrontEnd.HotPatch.RemovePatchesTitle>
     <DebugAssistance.FrontEnd.HotPatch.RemoveSelectedFailed>Some of the selected patches could not be removed.</DebugAssistance.FrontEnd.HotPatch.RemoveSelectedFailed>
+    <DebugAssistance.FrontEnd.HotPatch.BrowseConveniencePatches>Use a convenience patch…</DebugAssistance.FrontEnd.HotPatch.BrowseConveniencePatches>
+    <DebugAssistance.FrontEnd.HotPatch.ConveniencePatchesTitle>Convenience patches</DebugAssistance.FrontEnd.HotPatch.ConveniencePatchesTitle>
+    <DebugAssistance.FrontEnd.HotPatch.ConveniencePatchesIntro>Ready-made patches for common debugging needs. Choose one or more to apply against the target method above.</DebugAssistance.FrontEnd.HotPatch.ConveniencePatchesIntro>
+    <DebugAssistance.FrontEnd.HotPatch.NoConveniencePatches>No convenience patches found.</DebugAssistance.FrontEnd.HotPatch.NoConveniencePatches>
+    <DebugAssistance.FrontEnd.HotPatch.RescanConveniencePatches>Rescan</DebugAssistance.FrontEnd.HotPatch.RescanConveniencePatches>
 
     <DebugAssistance.FrontEnd.Probes.Title>Probes</DebugAssistance.FrontEnd.Probes.Title>
     <DebugAssistance.FrontEnd.Probes.FilterPlaceholder>Filter probes…</DebugAssistance.FrontEnd.Probes.FilterPlaceholder>

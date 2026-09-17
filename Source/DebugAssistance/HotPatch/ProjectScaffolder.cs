@@ -160,12 +160,34 @@ internal static class ProjectScaffolder
             "    </ItemGroup>",
         ];
 
+        lines.AddRange(BuildDebugAssistanceReferenceItemGroup());
         lines.AddRange(BuildThirdPartyReferenceItemGroup(targetMethod));
         lines.AddRange(BuildPublicizeItemGroup(targetMethod));
         lines.Add("</Project>");
         lines.Add("");
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    // A reference to DebugAssistance's own currently running assembly, unconditionally (unlike the
+    // target-dependent references below) -- it's what makes [ConveniencePatch] available to a
+    // player who wants their own scaffolded patch offered by the hot-patch panel's
+    // convenience-patch picker, not just DebugAssistance's own built-ins.
+    private static List<string> BuildDebugAssistanceReferenceItemGroup()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var path = GetAssemblyFilePath(assembly);
+        return path is null
+            ? []
+            :
+            [
+                "    <ItemGroup>",
+                $"        <Reference Include=\"{EscapeXmlAttribute(assembly.GetName().Name)}\">",
+                $"            <HintPath>{EscapeXmlAttribute(path)}</HintPath>",
+                "            <Private>false</Private>",
+                "        </Reference>",
+                "    </ItemGroup>",
+            ];
     }
 
     // The target's declaring type (and any third-party mod type reachable from its parameters or
@@ -383,6 +405,9 @@ internal static class ProjectScaffolder
             "// Delete whichever patch method(s) you don't need. Load the built DLL from",
             "// DebugAssistance's Hot Patch panel: it detects the [Harmony*] attributes below and",
             "// offers each one to apply directly, or pick target/patch method/patch type by hand.",
+            "// A static method marked [ConveniencePatch(name, description, patchType)] instead is",
+            "// offered against any target method, not just the one this project was generated for --",
+            "// see DebugAssistance.HotPatch.ConveniencePatchAttribute.",
         ]);
         var classAttribute = BuildHarmonyPatchAttribute(targetMethod);
         if (classAttribute.Length > 0)

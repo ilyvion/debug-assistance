@@ -148,6 +148,20 @@ export interface DiscoveredPatch {
     patchType: HarmonyPatchTypeName;
 }
 
+// One [ConveniencePatch]-attributed method the server currently knows about -- a ready-made
+// Harmony patch body offered against whatever target method the player currently has selected,
+// unlike DiscoveredPatch, which already carries its own resolved target. Applying one is
+// applyHotPatch(target, patchMethod, patchType) with no sourceAssemblyPath, since its patchMethod
+// always lives in an assembly already loaded into the process.
+export interface ConveniencePatch {
+    name: string;
+    description: string;
+    patchType: HarmonyPatchTypeName;
+    patchMethod: MethodRef;
+    patchMethodDescription: string;
+    sourceAssemblyName: string;
+}
+
 // When needsConfirmation is true, the load has not happened yet -- only
 // patchesFromPreviousLoad is set, listing the previous generation's active patches so the player
 // can pick which ones a removePatchIds follow-up call should remove. Otherwise the load already

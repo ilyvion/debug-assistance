@@ -21,6 +21,8 @@ internal partial class DebugAssistanceMod
 
     internal static LiveAssemblyLoader LiveAssemblyLoader { get; } = new();
 
+    internal static ConveniencePatchRegistry ConveniencePatchRegistry { get; } = new();
+
     internal static DebugAssistanceWebServer WebServer { get; private set; } = null!;
 
     private static readonly RawCaptureRingBuffer RawCaptureRingBuffer = new();
@@ -33,6 +35,7 @@ internal partial class DebugAssistanceMod
         StackTraceCapturePatch.Initialize(RawCaptureRingBuffer);
         LogCaptureHook.Initialize(CaptureStore, RawCaptureRingBuffer);
         LogMessageEnqueueCapturePatch.Initialize(CaptureStore, RawCaptureRingBuffer);
+        ConveniencePatchRegistry.Rescan();
 
         WebServer = new DebugAssistanceWebServer(Content);
         if (Settings.ServerEnabled)

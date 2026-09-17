@@ -130,12 +130,17 @@ internal sealed record DiscoveredPatchDto
     public required string PatchType { get; init; }
 }
 
+// SourceAssemblyPath is required when the patch method comes from a player-loaded hot-patch
+// assembly (the normal apply flow, and DiscoveredPatchesDialog's), so ServeApplyPatch can resolve
+// it through LiveAssemblyLoader the same way as always. It's omitted for a convenience patch,
+// whose PatchMethod already lives in an assembly resolvable straight off the AppDomain (see
+// ConveniencePatchDto's remarks) -- ServeApplyPatch falls back to that resolution when it's null.
 internal sealed record ApplyPatchRequestDto
 {
     public required MethodRefDto Target { get; init; }
     public required MethodRefDto PatchMethod { get; init; }
     public required string PatchType { get; init; }
-    public required string SourceAssemblyPath { get; init; }
+    public string? SourceAssemblyPath { get; init; }
 }
 
 internal sealed record ApplyPatchResultDto
@@ -192,4 +197,25 @@ internal sealed record ScaffoldResultDto
 internal sealed record SuggestedProjectNameDto
 {
     public required string ProjectName { get; init; }
+}
+
+// One [ConveniencePatch]-attributed method ConveniencePatchRegistry currently knows about.
+// PatchMethod is resolvable straight off the AppDomain (ResolveAssemblyByFullName +
+// ResolveMethod), the same way ApplyPatchRequestDto.Target already is -- unlike a hot-patch
+// assembly's patch method, a convenience patch's method always lives in an assembly already loaded
+// into the process (DebugAssistance itself, a running mod, or a loaded hot-patch assembly), so
+// applying one never needs a SourceAssemblyPath to resolve it through LiveAssemblyLoader.
+internal sealed record ConveniencePatchDto
+{
+    public required string Name { get; init; }
+    public required string Description { get; init; }
+    public required string PatchType { get; init; }
+    public required MethodRefDto PatchMethod { get; init; }
+    public required string PatchMethodDescription { get; init; }
+    public required string SourceAssemblyName { get; init; }
+}
+
+internal sealed record ConveniencePatchListDto
+{
+    public required IReadOnlyList<ConveniencePatchDto> Patches { get; init; }
 }
