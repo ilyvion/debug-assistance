@@ -14,6 +14,7 @@ import type {
     LoadAssemblyResult,
     LoadedAssemblyEntry,
     MethodRef,
+    MethodSearchResult,
     ModSettings,
     NamespaceEntry,
     ProbeDetail,
@@ -278,7 +279,8 @@ export async function fetchHotPatchMethods(
     path: string | null,
     filter?: string,
     compatibleWith?: CompatibleWith | null,
-): Promise<BrowsedMethod[]> {
+    offset = 0,
+): Promise<MethodSearchResult> {
     const params = new URLSearchParams();
     if (path !== null) {
         params.set('path', path);
@@ -286,12 +288,14 @@ export async function fetchHotPatchMethods(
     if (filter) {
         params.set('filter', filter);
     }
+    if (offset > 0) {
+        params.set('offset', String(offset));
+    }
     setCompatibilityParams(params, compatibleWith);
     const query = params.toString();
-    const data = await getJson<{ methods: BrowsedMethod[] }>(
+    return getJson<MethodSearchResult>(
         `/api/hotpatch/methods${query ? `?${query}` : ''}`,
     );
-    return data.methods;
 }
 
 export async function fetchHotPatchAssemblies(

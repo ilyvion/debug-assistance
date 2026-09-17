@@ -96,6 +96,14 @@ export interface BrowsedMethod {
     isStatic: boolean;
 }
 
+// totalCount/hasMore describe the full (possibly cached, server-side) search result methods is
+// one page of -- fetchHotPatchMethods requests further pages via its offset parameter.
+export interface MethodSearchResult {
+    methods: BrowsedMethod[];
+    totalCount: number;
+    hasMore: boolean;
+}
+
 export interface AssemblyEntry {
     name: string;
     fullName: string;

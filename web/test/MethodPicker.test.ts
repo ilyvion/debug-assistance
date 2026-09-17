@@ -12,6 +12,7 @@ import MethodPicker from '../src/components/MethodPicker.vue';
 import type {
     AssemblyEntry,
     BrowsedMethod,
+    MethodSearchResult,
     NamespaceEntry,
     TypeEntry,
 } from '../src/types';
@@ -67,6 +68,18 @@ function methodEntry(overrides: Partial<BrowsedMethod> = {}): BrowsedMethod {
         methodName: 'Prefix',
         signature: 'static bool Prefix()',
         isStatic: true,
+        ...overrides,
+    };
+}
+
+function methodSearchResult(
+    methods: BrowsedMethod[],
+    overrides: Partial<Omit<MethodSearchResult, 'methods'>> = {},
+): MethodSearchResult {
+    return {
+        methods,
+        totalCount: methods.length,
+        hasMore: false,
         ...overrides,
     };
 }
@@ -229,7 +242,9 @@ describe('MethodPicker', () => {
         await flushMicrotasks();
 
         const method = methodEntry();
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([method]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([method]),
+        );
         await wrapper.find('.filter-input').setValue('Prefix');
         await flushDebounce();
 
@@ -251,40 +266,92 @@ describe('MethodPicker', () => {
         });
         await flushMicrotasks();
 
-        let resolveFirst!: (methods: BrowsedMethod[]) => void;
-        const firstResponse = new Promise<BrowsedMethod[]>((resolve) => {
+        let resolveFirst!: (result: MethodSearchResult) => void;
+        const firstResponse = new Promise<MethodSearchResult>((resolve) => {
             resolveFirst = resolve;
         });
         vi.mocked(fetchHotPatchMethods).mockReturnValueOnce(firstResponse);
         await wrapper.find('.filter-input').setValue('post');
         await flushDebounce();
 
-        const secondResult = [
+        const secondResult = methodSearchResult([
             methodEntry({
                 methodName: 'PostExposeData',
                 signature: 'void PostExposeData()',
             }),
-        ];
+        ]);
         vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(secondResult);
         await wrapper.find('.filter-input').setValue('postexposedata');
         await flushDebounce();
 
         // The broader, earlier "post" search finally resolves after the narrower one already has.
-        resolveFirst([
-            methodEntry({
-                methodName: 'PostExposeData',
-                signature: 'void PostExposeData()',
-            }),
-            methodEntry({
-                methodName: 'PostSpawnSetup',
-                signature: 'void PostSpawnSetup()',
-            }),
-        ]);
+        resolveFirst(
+            methodSearchResult([
+                methodEntry({
+                    methodName: 'PostExposeData',
+                    signature: 'void PostExposeData()',
+                }),
+                methodEntry({
+                    methodName: 'PostSpawnSetup',
+                    signature: 'void PostSpawnSetup()',
+                }),
+            ]),
+        );
         await flushMicrotasks();
 
         const rows = wrapper.findAll('.results button');
         expect(rows).toHaveLength(1);
         expect(rows[0].text()).toContain('PostExposeData');
+    });
+
+    it('shows a load-more button when the search has further pages, and appends the next page on click', async () => {
+        vi.mocked(fetchHotPatchAssemblies).mockResolvedValueOnce([]);
+        const wrapper = mount(MethodPicker, {
+            props: { path: '/dev/patch.dll', modelValue: null },
+        });
+        await flushMicrotasks();
+
+        const firstPage = [
+            methodEntry({
+                methodName: 'Prefix1',
+                signature: 'static bool Prefix1()',
+                metadataToken: 1,
+            }),
+        ];
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult(firstPage, { totalCount: 2, hasMore: true }),
+        );
+        await wrapper.find('.filter-input').setValue('Prefix');
+        await flushDebounce();
+
+        expect(wrapper.findAll('.results button')).toHaveLength(1);
+        const loadMoreButton = wrapper.find('.load-more');
+        expect(loadMoreButton.exists()).toBe(true);
+
+        const secondPage = [
+            methodEntry({
+                methodName: 'Prefix2',
+                signature: 'static bool Prefix2()',
+                metadataToken: 2,
+            }),
+        ];
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult(secondPage, { totalCount: 2, hasMore: false }),
+        );
+        await loadMoreButton.trigger('click');
+        await flushMicrotasks();
+
+        expect(fetchHotPatchMethods).toHaveBeenLastCalledWith(
+            '/dev/patch.dll',
+            'Prefix',
+            null,
+            1,
+        );
+        const rows = wrapper.findAll('.results button');
+        expect(rows).toHaveLength(2);
+        expect(rows[0].text()).toContain('Prefix1');
+        expect(rows[1].text()).toContain('Prefix2');
+        expect(wrapper.find('.load-more').exists()).toBe(false);
     });
 
     it("shows each search result's declaring type, so identical-looking overloads stay distinguishable", async () => {
@@ -294,10 +361,12 @@ describe('MethodPicker', () => {
         });
         await flushMicrotasks();
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
-            methodEntry({ declaringTypeName: 'MyPatch.Fixes.SomeFix' }),
-            methodEntry({ declaringTypeName: 'MyPatch.Fixes.OtherFix' }),
-        ]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([
+                methodEntry({ declaringTypeName: 'MyPatch.Fixes.SomeFix' }),
+                methodEntry({ declaringTypeName: 'MyPatch.Fixes.OtherFix' }),
+            ]),
+        );
         await wrapper.find('.filter-input').setValue('Prefix');
         await flushDebounce();
 
@@ -314,13 +383,15 @@ describe('MethodPicker', () => {
         });
         await flushMicrotasks();
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
-            methodEntry({
-                declaringTypeName: 'MyPatch.Fixes.SomeFix',
-                methodName: 'PostExposeData',
-                signature: 'void PostExposeData()',
-            }),
-        ]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([
+                methodEntry({
+                    declaringTypeName: 'MyPatch.Fixes.SomeFix',
+                    methodName: 'PostExposeData',
+                    signature: 'void PostExposeData()',
+                }),
+            ]),
+        );
         await wrapper.find('.filter-input').setValue('SomeFix.Expose');
         await flushDebounce();
 
@@ -340,13 +411,15 @@ describe('MethodPicker', () => {
         });
         await flushMicrotasks();
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
-            methodEntry({
-                declaringTypeName: 'MyPatch.Fixes.SomeFix',
-                methodName: 'PostExposeData',
-                signature: 'void PostExposeData()',
-            }),
-        ]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([
+                methodEntry({
+                    declaringTypeName: 'MyPatch.Fixes.SomeFix',
+                    methodName: 'PostExposeData',
+                    signature: 'void PostExposeData()',
+                }),
+            ]),
+        );
         await wrapper.find('.filter-input').setValue('SomeFix.Expose');
         await flushDebounce();
 
@@ -371,7 +444,9 @@ describe('MethodPicker', () => {
         });
         await flushMicrotasks();
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([]),
+        );
         await wrapper.find('.filter-input').setValue('Prefix');
         await flushDebounce();
 
@@ -400,7 +475,9 @@ describe('MethodPicker', () => {
         });
         await flushMicrotasks();
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValue([]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValue(
+            methodSearchResult([]),
+        );
         await wrapper.find('.filter-input').setValue('Fix');
         await flushDebounce();
         const callsBefore = vi.mocked(fetchHotPatchMethods).mock.calls.length;

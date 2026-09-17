@@ -123,6 +123,8 @@
     <DebugAssistance.FrontEnd.HotPatch.SearchingMethods>Searching…</DebugAssistance.FrontEnd.HotPatch.SearchingMethods>
     <DebugAssistance.FrontEnd.HotPatch.TypeToSearchMethods>Type at least 2 characters to search every loaded assembly.</DebugAssistance.FrontEnd.HotPatch.TypeToSearchMethods>
     <DebugAssistance.FrontEnd.HotPatch.NoMethodsFound>No methods found.</DebugAssistance.FrontEnd.HotPatch.NoMethodsFound>
+    <DebugAssistance.FrontEnd.HotPatch.LoadMoreMethods>Load more</DebugAssistance.FrontEnd.HotPatch.LoadMoreMethods>
+    <DebugAssistance.FrontEnd.HotPatch.LoadingMoreMethods>Loading…</DebugAssistance.FrontEnd.HotPatch.LoadingMoreMethods>
     <DebugAssistance.FrontEnd.HotPatch.AllAssemblies>All assemblies</DebugAssistance.FrontEnd.HotPatch.AllAssemblies>
     <DebugAssistance.FrontEnd.HotPatch.GlobalNamespace>(no namespace)</DebugAssistance.FrontEnd.HotPatch.GlobalNamespace>
     <DebugAssistance.FrontEnd.HotPatch.Up>Up</DebugAssistance.FrontEnd.HotPatch.Up>

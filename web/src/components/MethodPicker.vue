@@ -33,7 +33,7 @@ const props = withDefaults(
         patchType?: HarmonyPatchTypeName | null;
         highlightMatches?: boolean;
     }>(),
-    { highlightMatches: true },
+    { highlightMatches: true, targetMethod: null, patchType: null },
 );
 
 const emit = defineEmits<{
@@ -58,6 +58,11 @@ const selectedType = ref<TypeEntry | null>(null);
 
 const filterText = ref('');
 const searchResults = ref<BrowsedMethod[]>([]);
+const searchHasMore = ref(false);
+const loadingMore = ref(false);
+// How many results of the current search have already been loaded into searchResults -- the
+// offset the next "load more" page continues from.
+let searchResultsLoaded = 0;
 let debounceHandle: number | undefined;
 // Guards against a slower, earlier request's response overwriting a newer one that arrived
 // first — each search() call claims the next number and only applies its result if it's still
@@ -180,19 +185,22 @@ function scheduleSearch() {
 async function search() {
     if (requiresLongerFilter()) {
         searchResults.value = [];
+        searchHasMore.value = false;
         return;
     }
     const sequence = ++searchSequence;
     loading.value = true;
     error.value = null;
     try {
-        const results = await fetchHotPatchMethods(
+        const result = await fetchHotPatchMethods(
             props.path,
             filterText.value.trim() || undefined,
             compatibilityFilter(),
         );
         if (sequence === searchSequence) {
-            searchResults.value = results;
+            searchResults.value = result.methods;
+            searchHasMore.value = result.hasMore;
+            searchResultsLoaded = result.methods.length;
         }
     } catch (err) {
         if (sequence === searchSequence) {
@@ -201,6 +209,36 @@ async function search() {
     } finally {
         if (sequence === searchSequence) {
             loading.value = false;
+        }
+    }
+}
+
+// Fetches the next page of the current search and appends it to searchResults, reusing the same
+// searchSequence guard as search() so a stale "load more" response from a filter that's since
+// changed is never appended.
+async function loadMoreResults() {
+    const sequence = searchSequence;
+    loadingMore.value = true;
+    error.value = null;
+    try {
+        const result = await fetchHotPatchMethods(
+            props.path,
+            filterText.value.trim() || undefined,
+            compatibilityFilter(),
+            searchResultsLoaded,
+        );
+        if (sequence === searchSequence) {
+            searchResults.value = [...searchResults.value, ...result.methods];
+            searchHasMore.value = result.hasMore;
+            searchResultsLoaded += result.methods.length;
+        }
+    } catch (err) {
+        if (sequence === searchSequence) {
+            error.value = describeError(err);
+        }
+    } finally {
+        if (sequence === searchSequence) {
+            loadingMore.value = false;
         }
     }
 }
@@ -364,6 +402,8 @@ function resetAndOpen() {
     selectedType.value = null;
     filterText.value = '';
     searchResults.value = [];
+    searchHasMore.value = false;
+    searchResultsLoaded = 0;
     open.value = true;
     void loadAssemblies();
 }
@@ -428,6 +468,8 @@ async function navigateBackTo(method: BrowsedMethod) {
     selectedType.value = null;
     filterText.value = '';
     searchResults.value = [];
+    searchHasMore.value = false;
+    searchResultsLoaded = 0;
     open.value = true;
     await selectAssembly({
         name: method.assemblyName,
@@ -533,6 +575,19 @@ defineExpose({ change });
                         </button>
                     </li>
                 </ul>
+                <button
+                    v-if="searchHasMore"
+                    type="button"
+                    class="load-more"
+                    :disabled="loadingMore"
+                    @click="loadMoreResults"
+                >
+                    {{
+                        loadingMore
+                            ? t('HotPatch.LoadingMoreMethods')
+                            : t('HotPatch.LoadMoreMethods')
+                    }}
+                </button>
             </template>
 
             <template v-else>
@@ -686,6 +741,12 @@ defineExpose({ change });
 
 .filter-input {
     width: 100%;
+}
+
+.load-more {
+    width: 100%;
+    text-align: center;
+    flex-shrink: 0;
 }
 
 .crumb:disabled {

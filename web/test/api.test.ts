@@ -8,6 +8,7 @@ import {
     decompileProbeFrame,
     deleteError,
     fetchErrors,
+    fetchHotPatchMethods,
     fetchProbeAiPrompt,
     fetchProbeDetail,
     fetchProbes,
@@ -254,6 +255,51 @@ describe('decompileProbeFrame', () => {
             '/api/probes/key/frames/2/decompile-patched',
             expect.objectContaining({ method: 'POST' }),
         );
+    });
+});
+
+describe('fetchHotPatchMethods', () => {
+    it('omits offset from the query string when not paging', async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(
+                jsonResponse({ methods: [], totalCount: 0, hasMore: false }),
+            );
+        vi.stubGlobal('fetch', fetchMock);
+
+        await fetchHotPatchMethods('/dev/patch.dll', 'Prefix', null);
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/api/hotpatch/methods?path=%2Fdev%2Fpatch.dll&filter=Prefix',
+        );
+    });
+
+    it('includes offset in the query string when paging', async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(
+                jsonResponse({ methods: [], totalCount: 15, hasMore: true }),
+            );
+        vi.stubGlobal('fetch', fetchMock);
+
+        await fetchHotPatchMethods('/dev/patch.dll', 'Prefix', null, 10);
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/api/hotpatch/methods?path=%2Fdev%2Fpatch.dll&filter=Prefix&offset=10',
+        );
+    });
+
+    it('returns the full paginated result as-is', async () => {
+        const body = {
+            methods: [{ methodName: 'Prefix' }],
+            totalCount: 12,
+            hasMore: true,
+        };
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(body)));
+
+        await expect(
+            fetchHotPatchMethods('/dev/patch.dll', 'Prefix', null),
+        ).resolves.toEqual(body);
     });
 });
 

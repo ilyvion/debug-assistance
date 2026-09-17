@@ -69,6 +69,11 @@ internal static class HotPatchEndpoints
             // methods, so any entries decompiled from the previous load must be dropped now, or a
             // later decompile request would keep serving stale, pre-reload source.
             FrameDecompiler.InvalidateCacheForAssemblyLocation(path);
+            // A reload can add, remove, or change the methods a previously cached search would
+            // have found, both for a search scoped to this path and for a path-less search across
+            // every loaded assembly, so the whole search cache is dropped rather than just this
+            // path's entries.
+            MethodSearchCache.Clear();
             var discoveredPatches = PatchAttributeScanner.Scan(loaded.Assembly);
             ctx.Response.WriteJson(
                 new LoadAssemblyResultDto
@@ -147,7 +152,12 @@ internal static class HotPatchEndpoints
             }
 
             ctx.Response.WriteJson(
-                new MethodListResponseDto { Methods = [.. typeMethods.Select(ToDto)] }
+                new MethodListResponseDto
+                {
+                    Methods = [.. typeMethods.Select(ToDto)],
+                    TotalCount = typeMethods.Count,
+                    HasMore = false,
+                }
             );
             return true;
         }
@@ -166,14 +176,64 @@ internal static class HotPatchEndpoints
             return ctx.Response.WriteJsonError(404, "Assembly not loaded");
         }
 
-        var methods = MethodBrowser.Browse(assemblies, filter);
-        if (compatibleWith is { } compatForSearch)
+        if (!int.TryParse(query["offset"], out var offset) || offset < 0)
         {
-            methods = [.. methods.Where(method => IsCompatible(method, compatForSearch))];
+            offset = 0;
         }
 
-        ctx.Response.WriteJson(new MethodListResponseDto { Methods = [.. methods.Select(ToDto)] });
+        var cacheKey = BuildSearchCacheKey(path, filter, compatibleWith);
+        var methods = MethodSearchCache.TryGet(
+            cacheKey,
+            DebugAssistanceMod.Settings.SearchCacheTtlSeconds
+        );
+        if (methods is null)
+        {
+            methods = MethodBrowser.Browse(assemblies, filter);
+            if (compatibleWith is { } compatForSearch)
+            {
+                methods = [.. methods.Where(method => IsCompatible(method, compatForSearch))];
+            }
+            MethodSearchCache.Set(
+                cacheKey,
+                methods,
+                DebugAssistanceMod.Settings.SearchCacheTtlSeconds,
+                DebugAssistanceMod.Settings.SearchCacheMaxEntries
+            );
+        }
+
+        var page = methods.Skip(offset).Take(SearchPageSize).ToList();
+        ctx.Response.WriteJson(
+            new MethodListResponseDto
+            {
+                Methods = [.. page.Select(ToDto)],
+                TotalCount = methods.Count,
+                HasMore = offset + page.Count < methods.Count,
+            }
+        );
         return true;
+    }
+
+    // Full results for a flat search are always computed and cached (see MethodSearchCache), but
+    // only this many are ever serialized into one response -- a search that matches hundreds of
+    // methods would otherwise produce a multi-megabyte response the frontend has to parse and
+    // render all at once. The frontend requests further pages via the `offset` query parameter.
+    internal const int SearchPageSize = 10;
+
+    // The cache key is just the search's own parameters -- an identical search (same path, filter,
+    // and compatibility target/patch type) always maps to the same key, so re-issuing it (e.g.
+    // paging, or typing "foo" -> "foobar" -> back to "foo") reuses the cached result for as long as
+    // it stays in MethodSearchCache. '\0' can't appear in any of these parts, so it's safe as a
+    // separator between them.
+    internal static string BuildSearchCacheKey(
+        string? path,
+        string? filter,
+        (MethodBase Target, OnTheFlyPatchType PatchType)? compatibleWith
+    )
+    {
+        var compatPart = compatibleWith is { } compat
+            ? $"{compat.Target.Module.Assembly.FullName}\0{compat.Target.MetadataToken}\0{compat.PatchType}"
+            : "";
+        return $"{path}\0{filter}\0{compatPart}";
     }
 
     // Opportunistic: only filters when the picker already knows a target method and patch type

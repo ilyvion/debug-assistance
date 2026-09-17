@@ -20,4 +20,6 @@
     <DebugAssistance.Settings.IgnoreUnityOnlyErrors>Ignore Unity-only errors</DebugAssistance.Settings.IgnoreUnityOnlyErrors>
     <DebugAssistance.Settings.IgnoreUnityOnlyErrorsTooltip>Errors logged directly to Unity rather than through RimWorld's own logging (e.g. Unity's 'Texture has dimensions which are not multiples of 4' warning) never reach the in-game debug log and aren't actionable from within this mod, so they're excluded from the captured list by default.</DebugAssistance.Settings.IgnoreUnityOnlyErrorsTooltip>
     <DebugAssistance.Settings.ProbeMaxInvocations>Max probe invocations: </DebugAssistance.Settings.ProbeMaxInvocations>
+    <DebugAssistance.Settings.SearchCacheTtlSeconds>Method search cache lifetime (seconds): </DebugAssistance.Settings.SearchCacheTtlSeconds>
+    <DebugAssistance.Settings.SearchCacheMaxEntries>Method search cache size (searches): </DebugAssistance.Settings.SearchCacheMaxEntries>
 </LanguageData>

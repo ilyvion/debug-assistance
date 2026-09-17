@@ -17,7 +17,11 @@ import {
     scaffoldHotPatchProject,
 } from '../src/api';
 import { settings } from '../src/settings';
-import type { ActivePatch, BrowsedMethod } from '../src/types';
+import type {
+    ActivePatch,
+    BrowsedMethod,
+    MethodSearchResult,
+} from '../src/types';
 import HotPatchView from '../src/views/HotPatchView.vue';
 
 vi.mock('../src/api', () => ({
@@ -70,6 +74,18 @@ function patchMethodResult(): BrowsedMethod {
         methodName: 'Prefix',
         signature: 'static bool Prefix()',
         isStatic: true,
+    };
+}
+
+function methodSearchResult(
+    methods: BrowsedMethod[],
+    overrides: Partial<Omit<MethodSearchResult, 'methods'>> = {},
+): MethodSearchResult {
+    return {
+        methods,
+        totalCount: methods.length,
+        hasMore: false,
+        ...overrides,
     };
 }
 
@@ -139,7 +155,9 @@ async function selectMethod(
     filterText: string,
     result: BrowsedMethod,
 ) {
-    vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([result]);
+    vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+        methodSearchResult([result]),
+    );
     await wrapper.find(`.${sectionClass} .filter-input`).setValue(filterText);
     await flushDebounce();
     await wrapper.find(`.${sectionClass} .results button`).trigger('click');
@@ -507,7 +525,9 @@ describe('HotPatchView', () => {
             targetMethod,
         );
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([]),
+        );
         await wrapper
             .find('.patch-method-section .filter-input')
             .setValue('Prefix');
@@ -550,7 +570,9 @@ describe('HotPatchView', () => {
 
         await wrapper.find('.compatibility-filter-label input').setValue(false);
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([]),
+        );
         await wrapper
             .find('.patch-method-section .filter-input')
             .setValue('Prefix');
@@ -576,9 +598,9 @@ describe('HotPatchView', () => {
         const wrapper = await mountPanel();
         await loadAssembly(wrapper);
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
-            targetMethodResult(),
-        ]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([targetMethodResult()]),
+        );
         await wrapper
             .find('.target-method-section .filter-input')
             .setValue('SomeMethod');
@@ -590,9 +612,9 @@ describe('HotPatchView', () => {
         const checkboxes = wrapper.findAll('.highlight-matches-label input');
         await checkboxes[0].setValue(false);
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
-            targetMethodResult(),
-        ]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([targetMethodResult()]),
+        );
         await wrapper
             .find('.target-method-section .filter-input')
             .setValue('SomeMethod');
@@ -601,9 +623,9 @@ describe('HotPatchView', () => {
             wrapper.find('.target-method-section .results mark').exists(),
         ).toBe(false);
 
-        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce([
-            patchMethodResult(),
-        ]);
+        vi.mocked(fetchHotPatchMethods).mockResolvedValueOnce(
+            methodSearchResult([patchMethodResult()]),
+        );
         await wrapper
             .find('.patch-method-section .filter-input')
             .setValue('Prefix');

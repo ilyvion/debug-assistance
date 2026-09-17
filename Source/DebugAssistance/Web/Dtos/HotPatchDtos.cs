@@ -12,9 +12,14 @@ internal sealed record BrowsedMethodDto
     public required bool IsStatic { get; init; }
 }
 
+// TotalCount/HasMore describe the full (possibly cached) search result Methods is a page of --
+// see HotPatchEndpoints.ServeMethodList and MethodSearchCache. The tree-picker leaf level (methods
+// of one type) returns its full result as a single page, so HasMore is always false there.
 internal sealed record MethodListResponseDto
 {
     public required IReadOnlyList<BrowsedMethodDto> Methods { get; init; }
+    public required int TotalCount { get; init; }
+    public required bool HasMore { get; init; }
 }
 
 // The three levels above Methods in the tree-style picker (Assembly -> Namespace -> Type ->

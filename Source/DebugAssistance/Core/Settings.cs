@@ -13,6 +13,8 @@ internal class Settings : ModSettings
     public bool ErrorCaptureEnabled = true;
     public bool IgnoreUnityOnlyErrors = true;
     public long ProbeMaxInvocations = Constants.DefaultProbeMaxInvocations;
+    public int SearchCacheTtlSeconds = Constants.DefaultSearchCacheTtlSeconds;
+    public int SearchCacheMaxEntries = Constants.DefaultSearchCacheMaxEntries;
 
     private static string _portBuffer = DefaultPort.ToString(CultureInfo.InvariantCulture);
     private static string _maxCapturedEntriesBuffer = Constants.DefaultMaxCapturedEntries.ToString(
@@ -20,6 +22,10 @@ internal class Settings : ModSettings
     );
     private static string _probeMaxInvocationsBuffer =
         Constants.DefaultProbeMaxInvocations.ToString(CultureInfo.InvariantCulture);
+    private static string _searchCacheTtlSecondsBuffer =
+        Constants.DefaultSearchCacheTtlSeconds.ToString(CultureInfo.InvariantCulture);
+    private static string _searchCacheMaxEntriesBuffer =
+        Constants.DefaultSearchCacheMaxEntries.ToString(CultureInfo.InvariantCulture);
 
     public override void ExposeData()
     {
@@ -40,6 +46,16 @@ internal class Settings : ModSettings
             ref ProbeMaxInvocations,
             "probeMaxInvocations",
             Constants.DefaultProbeMaxInvocations
+        );
+        Scribe_Values.Look(
+            ref SearchCacheTtlSeconds,
+            "searchCacheTtlSeconds",
+            Constants.DefaultSearchCacheTtlSeconds
+        );
+        Scribe_Values.Look(
+            ref SearchCacheMaxEntries,
+            "searchCacheMaxEntries",
+            Constants.DefaultSearchCacheMaxEntries
         );
     }
 
@@ -152,6 +168,24 @@ internal class Settings : ModSettings
             ref _probeMaxInvocationsBuffer,
             1,
             10_000_000
+        );
+
+        listing.Gap();
+
+        listing.TextFieldNumericLabeled(
+            "DebugAssistance.Settings.SearchCacheTtlSeconds".Translate(),
+            ref settings.SearchCacheTtlSeconds,
+            ref _searchCacheTtlSecondsBuffer,
+            1,
+            3600
+        );
+
+        listing.TextFieldNumericLabeled(
+            "DebugAssistance.Settings.SearchCacheMaxEntries".Translate(),
+            ref settings.SearchCacheMaxEntries,
+            ref _searchCacheMaxEntriesBuffer,
+            1,
+            1000
         );
 
         listing.End();

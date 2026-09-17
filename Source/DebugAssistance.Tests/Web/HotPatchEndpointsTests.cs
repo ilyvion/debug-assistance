@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Reflection.Emit;
 using System.Text;
+using System.Text.RegularExpressions;
 using DebugAssistance.HotPatch;
 using DebugAssistance.Web;
 using RimTestRedux;
@@ -648,6 +649,151 @@ internal static class HotPatchEndpointsTests
                 }
             })
             .Does.Not.Throw();
+
+    // A dozen distinctively-named methods for ServeMethodList's pagination test below -- more than
+    // SearchPageSize (10), so a filter matching all of them exercises both a full first page and a
+    // partial second page. Sits in this test assembly rather than a built fixture DLL since a
+    // path-less search already covers every currently loaded assembly, this one included.
+    private static class PaginationFixture
+    {
+        public static void DAPaginationFixtureMethod0() { }
+
+        public static void DAPaginationFixtureMethod1() { }
+
+        public static void DAPaginationFixtureMethod2() { }
+
+        public static void DAPaginationFixtureMethod3() { }
+
+        public static void DAPaginationFixtureMethod4() { }
+
+        public static void DAPaginationFixtureMethod5() { }
+
+        public static void DAPaginationFixtureMethod6() { }
+
+        public static void DAPaginationFixtureMethod7() { }
+
+        public static void DAPaginationFixtureMethod8() { }
+
+        public static void DAPaginationFixtureMethod9() { }
+
+        public static void DAPaginationFixtureMethod10() { }
+
+        public static void DAPaginationFixtureMethod11() { }
+    }
+
+    [Test]
+    public static void ServeMethodListPaginatesSearchResultsAndReportsTotalCountAndHasMore() =>
+        Assert
+            .ThatFunc(() =>
+            {
+                MethodSearchCache.Clear();
+                var port = FindFreeTcpPort();
+                using var server = new DebugAssistanceServer(
+                    port,
+                    Path.GetTempPath(),
+                    allowExternalConnections: false
+                );
+
+                var thread = new Thread(server.Start);
+                thread.Start();
+                Thread.Sleep(200);
+
+                try
+                {
+                    using var client = new HttpClient();
+
+                    var firstPageJson = client
+                        .GetStringAsync(
+                            new Uri(
+                                $"http://localhost:{port}/api/hotpatch/methods?filter=DAPaginationFixtureMethod"
+                            )
+                        )
+                        .GetAwaiter()
+                        .GetResult();
+
+                    var firstPageMatchCount = Regex
+                        .Matches(firstPageJson, "\"methodName\":\"DAPaginationFixtureMethod")
+                        .Count;
+                    if (firstPageMatchCount != HotPatchEndpoints.SearchPageSize)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {HotPatchEndpoints.SearchPageSize} methods on the first page, got {firstPageMatchCount}: {firstPageJson}"
+                        );
+                    }
+                    if (!firstPageJson.Contains("\"totalCount\":12", StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected totalCount 12, got: {firstPageJson}"
+                        );
+                    }
+                    if (!firstPageJson.Contains("\"hasMore\":true", StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected hasMore true, got: {firstPageJson}"
+                        );
+                    }
+
+                    var secondPageJson = client
+                        .GetStringAsync(
+                            new Uri(
+                                $"http://localhost:{port}/api/hotpatch/methods?filter=DAPaginationFixtureMethod&offset={HotPatchEndpoints.SearchPageSize}"
+                            )
+                        )
+                        .GetAwaiter()
+                        .GetResult();
+
+                    var secondPageMatchCount = Regex
+                        .Matches(secondPageJson, "\"methodName\":\"DAPaginationFixtureMethod")
+                        .Count;
+                    if (secondPageMatchCount != 2)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected 2 methods on the second page, got {secondPageMatchCount}: {secondPageJson}"
+                        );
+                    }
+                    if (!secondPageJson.Contains("\"hasMore\":false", StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected hasMore false, got: {secondPageJson}"
+                        );
+                    }
+                }
+                finally
+                {
+                    server.Stop();
+                    _ = thread.Join(TimeSpan.FromSeconds(5));
+                }
+            })
+            .Does.Not.Throw();
+
+    // Regression coverage for the cache key: an identical search must reuse MethodSearchCache's
+    // entry across requests (verified directly against BuildSearchCacheKey here since the HTTP
+    // endpoint gives no externally visible sign of a cache hit vs. miss), while a different filter,
+    // path, or compatibility target must not collide with it.
+    [Test]
+    public static void BuildSearchCacheKeyMatchesOnlyForIdenticalSearchParameters()
+    {
+        var target = AccessTools.Method(typeof(HotPatchEndpointsTests), nameof(SomeTarget));
+
+        var key = HotPatchEndpoints.BuildSearchCacheKey("/dev/patch.dll", "foo", null);
+        var sameKey = HotPatchEndpoints.BuildSearchCacheKey("/dev/patch.dll", "foo", null);
+        var differentFilter = HotPatchEndpoints.BuildSearchCacheKey(
+            "/dev/patch.dll",
+            "foobar",
+            null
+        );
+        var differentPath = HotPatchEndpoints.BuildSearchCacheKey("/dev/other.dll", "foo", null);
+        var withCompat = HotPatchEndpoints.BuildSearchCacheKey(
+            "/dev/patch.dll",
+            "foo",
+            (target, OnTheFlyPatchType.Prefix)
+        );
+
+        Assert.That(key).Is.EqualTo(sameKey);
+        Assert.That(key).Is.Not.EqualTo(differentFilter);
+        Assert.That(key).Is.Not.EqualTo(differentPath);
+        Assert.That(key).Is.Not.EqualTo(withCompat);
+    }
 
     [Test]
     public static void DescribePatchCombinesThePatchTypeAndTheTargetsDescription()

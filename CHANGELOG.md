@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removing one or more active patches now opens the same kind of checklist dialog as applying pre-configured patches, instead of an inline confirmation in the active patches list.
 - Reloading a patch assembly that still has patches active from its previous load now opens a checklist dialog to choose which of those patches to remove and which to keep running, instead of an all-or-nothing choice.
 - Searching for a method in the target-method or patch-method picker now puts the most likely matches first (an exact name beats a name that merely contains your search) instead of an arbitrary order, and highlights the part of the type and method name that matched, so it's clear at a glance why each result showed up. A 'Highlight matches' checkbox next to each picker's header, checked by default, turns this highlighting off if it's not to your taste.
+- A broad search in the target-method or patch-method picker (e.g. one matching hundreds of methods) no longer loads every result at once, which could make the page sluggish. Only the first 10 results are shown, with a 'Load more' button to fetch the next 10; repeating or narrowing a recent search reuses its cached results instead of searching again. Two new mod settings, 'Method search cache lifetime' and 'Method search cache size' (defaulting to 3 minutes and 20 searches), control how long and how many recent searches are kept cached.
 
 ### Fixed
 
