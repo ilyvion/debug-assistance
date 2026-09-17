@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Hot Patch view's active patches list is easier to scan when many patches are applied: each entry now shows a color-coded badge for the patch type, the target method as the prominent line, and the patch method/source assembly on a smaller line below it, with long names truncated (hover to see the full name) instead of wrapping across several lines.
 - The Errors, Hot Patch, and Probes pages now share the exact same header layout: every page shows its own subheader alongside the shared tabs, and the theme picker is now available from the Hot Patch and Probes pages too, not just Errors.
+- Removing one or more active patches now opens the same kind of checklist dialog as applying pre-configured patches, instead of an inline confirmation in the active patches list.
+- Reloading a patch assembly that still has patches active from its previous load now opens a checklist dialog to choose which of those patches to remove and which to keep running, instead of an all-or-nothing choice.
 
 ### Fixed
 

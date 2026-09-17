@@ -239,11 +239,11 @@ export async function setErrorCaptureEnabled(
 
 export async function loadHotPatchAssembly(
     path: string,
-    removeOldPatches?: boolean | null,
+    removePatchIds?: string[] | null,
 ): Promise<LoadAssemblyResult> {
     return postJson('/api/hotpatch/assembly', {
         path,
-        removeOldPatches: removeOldPatches ?? null,
+        removePatchIds: removePatchIds ?? null,
     });
 }
 
@@ -363,22 +363,6 @@ export async function applyHotPatch(
         patchType,
         sourceAssemblyPath,
     });
-}
-
-export async function removeHotPatch(
-    id: string,
-): Promise<{ removed: boolean }> {
-    const res = await fetch(`/api/hotpatch/remove/${encodeURIComponent(id)}`, {
-        method: 'POST',
-    });
-    const body = await parseJson<{ removed: boolean }>(res);
-    if (!res.ok) {
-        throw new ApiError(
-            body.error ?? `Request failed (${String(res.status)})`,
-            res.status,
-        );
-    }
-    return body;
 }
 
 export async function removeManyHotPatches(ids: string[]): Promise<string[]> {

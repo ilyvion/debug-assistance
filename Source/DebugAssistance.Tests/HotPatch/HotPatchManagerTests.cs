@@ -375,66 +375,6 @@ internal static class HotPatchManagerTests
             .Has.Count(2);
     }
 
-    private static readonly List<string> ReloadLog = [];
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ReloadTargetA(int value) => _ = value;
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ReloadTargetB(int value) => _ = value;
-
-#pragma warning disable IDE0051 // Used as a Harmony patch method, invoked by reflection
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ReloadMarkerPostfix(int value) => ReloadLog.Add($"marker:{value}");
-#pragma warning restore IDE0051
-
-    // The scenario a reload-with-removal depends on: only the patches whose patch method came
-    // from the reloaded assembly are removed, an independent patch whose patch method came from a
-    // different assembly is left alone.
-    [Test]
-    public static void RemoveAllFromAssemblyOnlyRemovesPatchesFromThatAssembly()
-    {
-        ReloadLog.Clear();
-        var manager = new HotPatchManager("test.debugassistance.hotpatchmanagertests.reload");
-        var thisAssemblyPatchMethod = AccessTools.Method(
-            typeof(HotPatchManagerTests),
-            nameof(ReloadMarkerPostfix)
-        );
-        var otherAssemblyPatchMethod = AccessTools.Method(
-            typeof(GC),
-            nameof(GC.WaitForPendingFinalizers)
-        );
-
-        var (fromThisAssembly, errorA) = manager.Apply(
-            AccessTools.Method(typeof(HotPatchManagerTests), nameof(ReloadTargetA)),
-            thisAssemblyPatchMethod,
-            OnTheFlyPatchType.Postfix,
-            "this-assembly.dll",
-            1
-        );
-        var (fromOtherAssembly, errorB) = manager.Apply(
-            AccessTools.Method(typeof(HotPatchManagerTests), nameof(ReloadTargetB)),
-            otherAssemblyPatchMethod,
-            OnTheFlyPatchType.Postfix,
-            "other-assembly.dll",
-            1
-        );
-        Assert.That(errorA is null).Is.True();
-        Assert.That(errorB is null).Is.True();
-
-        var removed = manager.RemoveAllFromAssembly(typeof(HotPatchManagerTests).Assembly);
-
-        Assert.ThatCollection(removed).Has.Count(1);
-        Assert.That(removed[0].Id.Equals(fromThisAssembly!.Id)).Is.True();
-        Assert.ThatCollection(manager.ActivePatches).Has.Count(1);
-        Assert.That(manager.ActivePatches[0].Id.Equals(fromOtherAssembly!.Id)).Is.True();
-
-        ReloadTargetA(1);
-        Assert.ThatCollection(ReloadLog).Is.Empty();
-
-        _ = manager.Remove(fromOtherAssembly!);
-    }
-
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void RemoveManyTargetA(int value) => _ = value;
 

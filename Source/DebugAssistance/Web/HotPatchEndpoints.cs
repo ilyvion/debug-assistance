@@ -24,6 +24,20 @@ internal static class HotPatchEndpoints
             return ctx.Response.WriteJsonError(400, "path is required");
         }
 
+        HashSet<Guid>? removePatchIds = null;
+        if (body.RemovePatchIds is { } requestedIds)
+        {
+            removePatchIds = [];
+            foreach (var idText in requestedIds)
+            {
+                if (!Guid.TryParse(idText, out var id))
+                {
+                    return ctx.Response.WriteJsonError(400, $"Invalid patch id: {idText}");
+                }
+                _ = removePatchIds.Add(id);
+            }
+        }
+
         // The game never unloads an old generation's Assembly instance, so leaving its patches
         // running after a reload is harmless -- unlike removing them, which can't be undone. So
         // only ask when there's actually something at stake: a previous load of this exact path
@@ -32,16 +46,13 @@ internal static class HotPatchEndpoints
         var patchesFromPrevious = previous is { } prev
             ? DebugAssistanceMod.HotPatchManager.PatchesFromAssembly(prev.Assembly)
             : [];
-        if (patchesFromPrevious.Count > 0 && body.RemoveOldPatches is null)
+        if (patchesFromPrevious.Count > 0 && removePatchIds is null)
         {
             ctx.Response.WriteJson(
                 new LoadAssemblyResultDto
                 {
                     NeedsConfirmation = true,
-                    PatchesFromPreviousLoadDescriptions =
-                    [
-                        .. patchesFromPrevious.Select(DescribePatch),
-                    ],
+                    PatchesFromPreviousLoad = [.. patchesFromPrevious.Select(ToDto)],
                 }
             );
             return true;
@@ -50,12 +61,9 @@ internal static class HotPatchEndpoints
         try
         {
             var loaded = DebugAssistanceMod.LiveAssemblyLoader.Load(path);
-            var removedPatches =
-                previous is { } prevToRemove && body.RemoveOldPatches == true
-                    ? DebugAssistanceMod.HotPatchManager.RemoveAllFromAssembly(
-                        prevToRemove.Assembly
-                    )
-                    : [];
+            var removedPatches = removePatchIds is { Count: > 0 }
+                ? DebugAssistanceMod.HotPatchManager.RemoveMany(removePatchIds)
+                : [];
             // FrameDecompiler.GetOrDecompile keys its cache on (assemblyLocation, metadataToken);
             // a rebuilt assembly at this same path commonly keeps the same tokens for unchanged
             // methods, so any entries decompiled from the previous load must be dropped now, or a
@@ -431,30 +439,11 @@ internal static class HotPatchEndpoints
         return true;
     }
 
-    internal static bool ServeRemovePatch(HttpListenerContext ctx, string idPart)
-    {
-        if (!Guid.TryParse(idPart, out var id))
-        {
-            return ctx.Response.WriteJsonError(400, "Invalid patch id");
-        }
-
-        var patch = DebugAssistanceMod.HotPatchManager.ActivePatches.FirstOrDefault(p =>
-            p.Id == id
-        );
-        if (patch is null)
-        {
-            return ctx.Response.WriteJsonError(404, "Patch not found");
-        }
-
-        var removed = DebugAssistanceMod.HotPatchManager.Remove(patch);
-        ctx.Response.WriteJson(new RemovePatchResultDto { Removed = removed });
-        return true;
-    }
-
-    // POST /api/hotpatch/remove-many: the multi-select "Remove selected" action. Unknown or
-    // already-inactive ids are silently skipped rather than erroring the whole request -- the
-    // player picked from a snapshot of ActivePatches that could have gone stale by the time they
-    // confirmed, and RemovedIds tells the UI exactly what actually went away.
+    // POST /api/hotpatch/remove-many: the "Remove" action in the active-patches list, for both a
+    // single patch and a multi-select -- the RemovePatchesDialog always calls this, with one id or
+    // several. Unknown or already-inactive ids are silently skipped rather than erroring the whole
+    // request -- the player picked from a snapshot of ActivePatches that could have gone stale by
+    // the time they confirmed, and RemovedIds tells the UI exactly what actually went away.
     internal static bool ServeRemoveManyPatches(HttpListenerContext ctx)
     {
         var body = ctx.Request.ReadJson<RemoveManyPatchesRequestDto>();

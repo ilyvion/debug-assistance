@@ -170,8 +170,8 @@ internal sealed class HotPatchManager
     }
 
     // Every active patch whose patch method belongs to `assembly`, without touching Harmony or
-    // removing anything. Used both to ask the player for confirmation before a reload would
-    // discard these, and by RemoveAllFromAssembly below to find what to actually remove.
+    // removing anything. Used to ask the player for confirmation before a reload would discard
+    // these; the player's chosen subset is then removed via RemoveMany by id.
     internal IReadOnlyList<OnTheFlyPatch> PatchesFromAssembly(Assembly assembly)
     {
         lock (_lock)
@@ -192,39 +192,6 @@ internal sealed class HotPatchManager
         lock (_lock)
         {
             removed = [.. _activePatches.Where(patch => ids.Contains(patch.Id))];
-            foreach (var patch in removed)
-            {
-                _ = _activePatches.Remove(patch);
-            }
-        }
-
-        foreach (var patch in removed)
-        {
-            _harmony.Unpatch(patch.Target, patch.AppliedMethod);
-            if (patch.PatchType == OnTheFlyPatchType.Replace)
-            {
-                ReplacePatchBuilder.Forget(patch.Target);
-            }
-        }
-
-        return removed;
-    }
-
-    // Called when the player reloads an assembly and chooses to remove its previous generation's
-    // patches rather than leave them running: the classic .NET/Mono runtime RimWorld embeds has
-    // no collectible/unloadable AssemblyLoadContext, so the previous load's Assembly instance --
-    // and every OnTheFlyPatch built from it -- would otherwise dangle against now-orphaned IL once
-    // the new bytes replace it. Only patches whose patch method belongs to `assembly` are removed;
-    // any other active on-the-fly patch, including ones on the same target method, is left alone.
-    internal IReadOnlyList<OnTheFlyPatch> RemoveAllFromAssembly(Assembly assembly)
-    {
-        List<OnTheFlyPatch> removed;
-        lock (_lock)
-        {
-            removed =
-            [
-                .. _activePatches.Where(patch => patch.PatchMethod.Module.Assembly == assembly),
-            ];
             foreach (var patch in removed)
             {
                 _ = _activePatches.Remove(patch);

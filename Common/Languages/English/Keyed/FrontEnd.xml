@@ -94,8 +94,9 @@
     <DebugAssistance.FrontEnd.HotPatch.Reload>Reload</DebugAssistance.FrontEnd.HotPatch.Reload>
     <DebugAssistance.FrontEnd.HotPatch.Loaded>Loaded {0}#{1}.</DebugAssistance.FrontEnd.HotPatch.Loaded>
     <DebugAssistance.FrontEnd.HotPatch.PatchesRemovedBeforeReload>{0} patch(es) removed before reload:</DebugAssistance.FrontEnd.HotPatch.PatchesRemovedBeforeReload>
+    <DebugAssistance.FrontEnd.HotPatch.ReloadPatchesTitle>Patches from previous load</DebugAssistance.FrontEnd.HotPatch.ReloadPatchesTitle>
     <DebugAssistance.FrontEnd.HotPatch.ReloadWillLeaveOrRemovePatches>{0} patch(es) are currently active from the previous load of this assembly. Remove them, or keep them running against the old code?</DebugAssistance.FrontEnd.HotPatch.ReloadWillLeaveOrRemovePatches>
-    <DebugAssistance.FrontEnd.HotPatch.RemoveOldPatches>Remove old patches</DebugAssistance.FrontEnd.HotPatch.RemoveOldPatches>
+    <DebugAssistance.FrontEnd.HotPatch.RemoveSelectedAndReload>Remove selected ({0}) and reload</DebugAssistance.FrontEnd.HotPatch.RemoveSelectedAndReload>
     <DebugAssistance.FrontEnd.HotPatch.KeepOldPatches>Keep old patches</DebugAssistance.FrontEnd.HotPatch.KeepOldPatches>
     <DebugAssistance.FrontEnd.HotPatch.LoadedAssembliesTitle>Already loaded assemblies</DebugAssistance.FrontEnd.HotPatch.LoadedAssembliesTitle>
     <DebugAssistance.FrontEnd.HotPatch.NoLoadedAssemblies>No patch assemblies loaded yet this session.</DebugAssistance.FrontEnd.HotPatch.NoLoadedAssemblies>
@@ -110,7 +111,6 @@
     <DebugAssistance.FrontEnd.HotPatch.ActivePatchesTitle>Active patches</DebugAssistance.FrontEnd.HotPatch.ActivePatchesTitle>
     <DebugAssistance.FrontEnd.HotPatch.NoActivePatches>No on-the-fly patches are currently active.</DebugAssistance.FrontEnd.HotPatch.NoActivePatches>
     <DebugAssistance.FrontEnd.HotPatch.Remove>Remove</DebugAssistance.FrontEnd.HotPatch.Remove>
-    <DebugAssistance.FrontEnd.HotPatch.RemoveConfirm>Remove this patch? It will stop taking effect immediately.</DebugAssistance.FrontEnd.HotPatch.RemoveConfirm>
     <DebugAssistance.FrontEnd.HotPatch.Confirm>Confirm</DebugAssistance.FrontEnd.HotPatch.Confirm>
     <DebugAssistance.FrontEnd.HotPatch.Cancel>Cancel</DebugAssistance.FrontEnd.HotPatch.Cancel>
     <DebugAssistance.FrontEnd.HotPatch.SelectAll>Select all</DebugAssistance.FrontEnd.HotPatch.SelectAll>
@@ -151,6 +151,8 @@
     <DebugAssistance.FrontEnd.HotPatch.DiscoveredPatchesIntro>This assembly has {0} patch method(s) already carrying a [HarmonyPatch] target. Choose which to apply now.</DebugAssistance.FrontEnd.HotPatch.DiscoveredPatchesIntro>
     <DebugAssistance.FrontEnd.HotPatch.ApplySelected>Apply selected ({0})</DebugAssistance.FrontEnd.HotPatch.ApplySelected>
     <DebugAssistance.FrontEnd.HotPatch.Close>Close</DebugAssistance.FrontEnd.HotPatch.Close>
+    <DebugAssistance.FrontEnd.HotPatch.RemovePatchesTitle>Remove patches</DebugAssistance.FrontEnd.HotPatch.RemovePatchesTitle>
+    <DebugAssistance.FrontEnd.HotPatch.RemoveSelectedFailed>Some of the selected patches could not be removed.</DebugAssistance.FrontEnd.HotPatch.RemoveSelectedFailed>
 
     <DebugAssistance.FrontEnd.Probes.Title>Probes</DebugAssistance.FrontEnd.Probes.Title>
     <DebugAssistance.FrontEnd.Probes.FilterPlaceholder>Filter probes…</DebugAssistance.FrontEnd.Probes.FilterPlaceholder>

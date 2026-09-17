@@ -5,8 +5,8 @@ namespace DebugAssistance.HotPatch;
 // MethodBase references, which must never be persisted directly.
 //
 // PatchMethod is always the player-selected method (the prefix/postfix/.../replacement method
-// picked in the UI), which is what PatchesFromAssembly/RemoveAllFromAssembly key their Module.
-// Assembly attribution on. AppliedMethod is whatever was actually handed to Harmony.Patch: the
+// picked in the UI), which is what PatchesFromAssembly keys its Module.Assembly attribution on.
+// AppliedMethod is whatever was actually handed to Harmony.Patch: the
 // same as PatchMethod for Prefix/Postfix/Transpiler/Finalizer, but for Replace it's the generated
 // destructive-prefix shim (ReplacePatchBuilder.Build) — a DynamicMethod with no assembly of its
 // own — since that's what Harmony.Unpatch needs to reverse the patch.

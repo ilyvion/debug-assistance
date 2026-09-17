@@ -141,14 +141,15 @@ export interface DiscoveredPatch {
 }
 
 // When needsConfirmation is true, the load has not happened yet -- only
-// patchesFromPreviousLoadDescriptions is set, describing what a removeOldPatches: true follow-up
-// call would remove. Otherwise the load already happened and the remaining fields describe its
-// result. discoveredPatches is unset/empty unless the freshly loaded assembly had at least one
+// patchesFromPreviousLoad is set, listing the previous generation's active patches so the player
+// can pick which ones a removePatchIds follow-up call should remove. Otherwise the load already
+// happened and the remaining fields describe its result. discoveredPatches is unset/empty unless
+// the freshly loaded assembly had at least one
 // [HarmonyPrefix]/[HarmonyPostfix]/[HarmonyTranspiler]/[HarmonyFinalizer]-attributed method with a
 // resolvable target.
 export interface LoadAssemblyResult {
     needsConfirmation: boolean;
-    patchesFromPreviousLoadDescriptions?: string[];
+    patchesFromPreviousLoad?: ActivePatch[];
     assemblyName?: string;
     assemblyFullName?: string;
     generation?: number;

@@ -11,14 +11,14 @@ import {
     fetchSuggestedScaffoldProjectName,
     loadHotPatchAssembly,
     removeActiveProbe,
-    removeHotPatch,
-    removeManyHotPatches,
     scaffoldHotPatchProject,
 } from '../api';
 import DiscoveredPatchesDialog from '../components/DiscoveredPatchesDialog.vue';
 import FileBrowser from '../components/FileBrowser.vue';
 import MethodPicker from '../components/MethodPicker.vue';
 import PageHeader from '../components/PageHeader.vue';
+import ReloadPatchesDialog from '../components/ReloadPatchesDialog.vue';
+import RemovePatchesDialog from '../components/RemovePatchesDialog.vue';
 import { loadLastPath, saveLastPath } from '../lastPaths';
 import { settings } from '../settings';
 import { t } from '../translations';
@@ -63,8 +63,11 @@ const removedNotice = ref<string[] | null>(null);
 const loadError = ref<string | null>(null);
 const loading = ref(false);
 // Set while a reload of a path with patches still active from its previous generation is
-// awaiting the player's Remove/Keep choice -- the load itself hasn't happened yet at this point.
-const pendingReload = ref<{ path: string; patches: string[] } | null>(null);
+// awaiting the player's remove/keep choice, via ReloadPatchesDialog -- the load itself hasn't
+// happened yet at this point.
+const pendingReload = ref<{ path: string; patches: ActivePatch[] } | null>(
+    null,
+);
 
 const loadedAssemblies = ref<LoadedAssemblyEntry[]>([]);
 const showLoadedAssemblies = ref(false);
@@ -108,9 +111,11 @@ const applying = ref(false);
 
 const activePatches = ref<ActivePatch[]>([]);
 const activeError = ref<string | null>(null);
-const pendingRemove = ref<string | null>(null);
 const selectedPatchIds = ref<Set<string>>(new Set());
-const pendingBulkRemove = ref(false);
+// Set to the patch(es) a trash icon or 'Remove selected' was just clicked for -- the
+// RemovePatchesDialog itself does the removing and the confirming, this just tells it what to
+// offer.
+const removeDialogPatches = ref<ActivePatch[] | null>(null);
 
 const activeProbes = ref<ActiveProbe[]>([]);
 const activeProbesError = ref<string | null>(null);
@@ -228,7 +233,7 @@ async function refreshActive() {
 
 void refreshActive();
 
-async function loadAssembly(removeOldPatches?: boolean) {
+async function loadAssembly(removePatchIds?: string[]) {
     const path = assemblyPath.value.trim();
     if (!path) {
         return;
@@ -237,15 +242,14 @@ async function loadAssembly(removeOldPatches?: boolean) {
     loadError.value = null;
     removedNotice.value = null;
     try {
-        const result = await loadHotPatchAssembly(path, removeOldPatches);
+        const result = await loadHotPatchAssembly(path, removePatchIds);
         if (result.needsConfirmation) {
             pendingReload.value = {
                 path,
-                patches: result.patchesFromPreviousLoadDescriptions ?? [],
+                patches: result.patchesFromPreviousLoad ?? [],
             };
             return;
         }
-        pendingReload.value = null;
         loadedPath.value = path;
         loadedAssemblyName.value = result.assemblyName ?? null;
         loadedGeneration.value = result.generation ?? null;
@@ -259,6 +263,11 @@ async function loadAssembly(removeOldPatches?: boolean) {
             removedNotice.value = result.removedPatchDescriptions;
             await refreshActive();
         }
+        // Cleared here rather than as soon as the result comes back, so that if
+        // ReloadPatchesDialog was open, it stays open (unchanged) through the awaits above instead
+        // of closing early and leaving a gap before DiscoveredPatchesDialog can open -- setting
+        // both refs in the same synchronous step lets Vue batch the transition into one render.
+        pendingReload.value = null;
         if (result.discoveredPatches && result.discoveredPatches.length > 0) {
             discoveredPatches.value = result.discoveredPatches;
             showDiscoveredPatches.value = true;
@@ -389,16 +398,6 @@ async function copyDebugPrompt() {
     }
 }
 
-async function remove(id: string) {
-    try {
-        await removeHotPatch(id);
-        pendingRemove.value = null;
-        await refreshActive();
-    } catch (err) {
-        activeError.value = describeError(err);
-    }
-}
-
 function togglePatchSelected(id: string) {
     const next = new Set(selectedPatchIds.value);
     if (next.has(id)) {
@@ -420,15 +419,15 @@ function patchTypeClass(patchType: string): string {
     return `patch-type-${patchType.toLowerCase()}`;
 }
 
-async function removeSelected() {
-    try {
-        await removeManyHotPatches([...selectedPatchIds.value]);
-        pendingBulkRemove.value = false;
-        selectedPatchIds.value = new Set();
-        await refreshActive();
-    } catch (err) {
-        activeError.value = describeError(err);
-    }
+function removeSelectedPatches() {
+    removeDialogPatches.value = activePatches.value.filter((patch) =>
+        selectedPatchIds.value.has(patch.id),
+    );
+}
+
+async function onPatchesRemoved() {
+    selectedPatchIds.value = new Set();
+    await refreshActive();
 }
 </script>
 
@@ -467,7 +466,7 @@ async function removeSelected() {
                             <button
                                 type="button"
                                 :disabled="selectedPatchIds.size === 0"
-                                @click="pendingBulkRemove = true"
+                                @click="removeSelectedPatches"
                             >
                                 {{
                                     t(
@@ -475,23 +474,6 @@ async function removeSelected() {
                                         selectedPatchIds.size,
                                     )
                                 }}
-                            </button>
-                        </div>
-                        <div v-if="pendingBulkRemove" class="confirm bulk">
-                            {{
-                                t(
-                                    'HotPatch.RemoveSelectedConfirm',
-                                    selectedPatchIds.size,
-                                )
-                            }}
-                            <button type="button" @click="removeSelected">
-                                {{ t('HotPatch.Confirm') }}
-                            </button>
-                            <button
-                                type="button"
-                                @click="pendingBulkRemove = false"
-                            >
-                                {{ t('HotPatch.Cancel') }}
                             </button>
                         </div>
                         <ul class="active-list">
@@ -509,7 +491,7 @@ async function removeSelected() {
                                         type="button"
                                         class="remove-patch"
                                         :title="t('HotPatch.Remove')"
-                                        @click="pendingRemove = patch.id"
+                                        @click="removeDialogPatches = [patch]"
                                     >
                                         🗑
                                     </button>
@@ -529,24 +511,6 @@ async function removeSelected() {
                                             patch.sourceAssemblyGeneration
                                         }}
                                     </div>
-                                </div>
-                                <div
-                                    v-if="pendingRemove === patch.id"
-                                    class="confirm"
-                                >
-                                    {{ t('HotPatch.RemoveConfirm') }}
-                                    <button
-                                        type="button"
-                                        @click="remove(patch.id)"
-                                    >
-                                        {{ t('HotPatch.Confirm') }}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        @click="pendingRemove = null"
-                                    >
-                                        {{ t('HotPatch.Cancel') }}
-                                    </button>
                                 </div>
                             </li>
                         </ul>
@@ -721,43 +685,12 @@ async function removeSelected() {
                                 )
                             }}
                         </p>
-                        <div v-if="pendingReload" class="reload-confirm">
-                            <p>
-                                {{
-                                    t(
-                                        'HotPatch.ReloadWillLeaveOrRemovePatches',
-                                        pendingReload.patches.length,
-                                    )
-                                }}
-                            </p>
-                            <ul>
-                                <li
-                                    v-for="(
-                                        description, index
-                                    ) in pendingReload.patches"
-                                    :key="index"
-                                >
-                                    {{ description }}
-                                </li>
-                            </ul>
-                            <div class="reload-confirm-buttons">
-                                <button
-                                    type="button"
-                                    @click="loadAssembly(true)"
-                                >
-                                    {{ t('HotPatch.RemoveOldPatches') }}
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="loadAssembly(false)"
-                                >
-                                    {{ t('HotPatch.KeepOldPatches') }}
-                                </button>
-                                <button type="button" @click="cancelReload">
-                                    {{ t('HotPatch.Cancel') }}
-                                </button>
-                            </div>
-                        </div>
+                        <ReloadPatchesDialog
+                            v-if="pendingReload"
+                            :patches="pendingReload.patches"
+                            @cancel="cancelReload"
+                            @confirm="loadAssembly"
+                        />
                         <div v-if="removedNotice" class="status warning">
                             <p>
                                 {{
@@ -931,6 +864,13 @@ async function removeSelected() {
             @close="showDiscoveredPatches = false"
             @applied="refreshActive"
         />
+
+        <RemovePatchesDialog
+            v-if="removeDialogPatches"
+            :patches="removeDialogPatches"
+            @close="removeDialogPatches = null"
+            @removed="onPatchesRemoved"
+        />
     </div>
 </template>
 
@@ -1093,20 +1033,6 @@ section h4 {
     color: var(--text-muted);
 }
 
-.reload-confirm {
-    margin-top: 8px;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 13px;
-}
-
-.reload-confirm-buttons {
-    display: flex;
-    gap: 8px;
-    margin-top: 6px;
-}
-
 .loaded-assemblies {
     margin-top: 8px;
 }
@@ -1267,11 +1193,6 @@ lines share the full remaining width on theirs. */
     font-size: 13px;
     margin-top: 6px;
     width: 100%;
-}
-
-.confirm.bulk {
-    margin-top: 0;
-    margin-bottom: 8px;
 }
 
 .add-probe {

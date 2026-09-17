@@ -55,28 +55,29 @@ internal sealed record TypeListResponseDto
     public required IReadOnlyList<TypeEntryDto> Types { get; init; }
 }
 
-// RemoveOldPatches is a three-way choice, not a plain bool: null means "the player hasn't been
-// asked yet" -- if the path being (re)loaded still has patches active from its previous
-// generation, the server responds with NeedsConfirmation instead of loading, and the player's
-// answer (true to remove those patches, false to leave them running) comes back as this field on
-// the follow-up request.
+// RemovePatchIds distinguishes "hasn't been asked yet" from "answered with nothing to remove":
+// null means the player hasn't been asked -- if the path being (re)loaded still has patches
+// active from its previous generation, the server responds with NeedsConfirmation instead of
+// loading. A non-null list (possibly empty) is the player's answer, naming which of those
+// previous-generation patches (by id) to remove before loading; any not named are left running.
 internal sealed record LoadAssemblyRequestDto
 {
     public required string Path { get; init; }
-    public bool? RemoveOldPatches { get; init; }
+    public IReadOnlyList<string>? RemovePatchIds { get; init; }
 }
 
 // When NeedsConfirmation is true, the load has *not* happened yet -- only
-// PatchesFromPreviousLoadDescriptions is populated, describing what a RemoveOldPatches: true
-// follow-up request would remove. Otherwise the load already happened and the remaining fields
-// describe its result, with RemovedPatchDescriptions empty unless RemoveOldPatches was true.
-// DiscoveredPatches is null/empty unless PatchAttributeScanner found at least one
+// PatchesFromPreviousLoad is populated, listing the previous generation's active patches so the
+// player can pick which ones a RemovePatchIds follow-up request should remove. Otherwise the load
+// already happened and the remaining fields describe its result, with RemovedPatchDescriptions
+// empty unless RemovePatchIds named at least one patch. DiscoveredPatches is null/empty unless
+// PatchAttributeScanner found at least one
 // [HarmonyPrefix]/[HarmonyPostfix]/[HarmonyTranspiler]/[HarmonyFinalizer]-attributed method with a
 // resolvable target in the freshly loaded assembly.
 internal sealed record LoadAssemblyResultDto
 {
     public required bool NeedsConfirmation { get; init; }
-    public IReadOnlyList<string>? PatchesFromPreviousLoadDescriptions { get; init; }
+    public IReadOnlyList<ActivePatchDto>? PatchesFromPreviousLoad { get; init; }
     public string? AssemblyName { get; init; }
     public string? AssemblyFullName { get; init; }
     public int? Generation { get; init; }
@@ -153,11 +154,6 @@ internal sealed record ActivePatchDto
 internal sealed record ActivePatchListDto
 {
     public required IReadOnlyList<ActivePatchDto> Patches { get; init; }
-}
-
-internal sealed record RemovePatchResultDto
-{
-    public required bool Removed { get; init; }
 }
 
 internal sealed record RemoveManyPatchesRequestDto

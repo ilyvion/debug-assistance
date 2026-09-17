@@ -13,7 +13,6 @@ import {
     fetchLoadedHotPatchAssemblies,
     fetchSuggestedScaffoldProjectName,
     loadHotPatchAssembly,
-    removeHotPatch,
     removeManyHotPatches,
     scaffoldHotPatchProject,
 } from '../src/api';
@@ -34,7 +33,6 @@ vi.mock('../src/api', () => ({
     fetchLoadedHotPatchAssemblies: vi.fn(),
     fetchSuggestedScaffoldProjectName: vi.fn(),
     loadHotPatchAssembly: vi.fn(),
-    removeHotPatch: vi.fn(),
     removeManyHotPatches: vi.fn(),
     scaffoldHotPatchProject: vi.fn(),
 }));
@@ -236,12 +234,22 @@ describe('HotPatchView', () => {
         expect(wrapper.find('.patch-list').exists()).toBe(false);
     });
 
-    it('asks for confirmation instead of silently removing patches when reloading a path that still has some active', async () => {
+    const previousGenerationPatch: ActivePatch = {
+        id: 'patch-1',
+        targetDescription: 'Some.Type.Method',
+        patchMethodDescription: 'GeneratedPatch.Patches.Prefix',
+        patchType: 'Prefix',
+        sourceAssemblyPath: '/dev/patch.dll',
+        sourceAssemblyName: 'MyPatch',
+        sourceAssemblyGeneration: 1,
+    };
+
+    it('opens the reload-patches dialog instead of silently removing patches when reloading a path that still has some active', async () => {
         const wrapper = await mountPanel();
 
         vi.mocked(loadHotPatchAssembly).mockResolvedValueOnce({
             needsConfirmation: true,
-            patchesFromPreviousLoadDescriptions: ['Prefix on Some.Type.Method'],
+            patchesFromPreviousLoad: [previousGenerationPatch],
         });
         await wrapper
             .find('.assembly-section .path-input')
@@ -250,16 +258,16 @@ describe('HotPatchView', () => {
         await flushMicrotasks();
 
         expect(wrapper.find('.patch-method-section').exists()).toBe(false);
-        const prompt = wrapper.find('.assembly-section .reload-confirm');
+        const prompt = wrapper.find('.assembly-section .patch-list');
         expect(prompt.exists()).toBe(true);
-        expect(prompt.text()).toContain('Prefix on Some.Type.Method');
+        expect(prompt.text()).toContain('Some.Type.Method');
     });
 
     it('removes the previous generation patches once the player confirms removal', async () => {
         const wrapper = await mountPanel();
         vi.mocked(loadHotPatchAssembly).mockResolvedValueOnce({
             needsConfirmation: true,
-            patchesFromPreviousLoadDescriptions: ['Prefix on Some.Type.Method'],
+            patchesFromPreviousLoad: [previousGenerationPatch],
         });
         await wrapper
             .find('.assembly-section .path-input')
@@ -280,15 +288,15 @@ describe('HotPatchView', () => {
         ]);
 
         await wrapper
-            .find('.assembly-section .reload-confirm-buttons button')
+            .find('.assembly-section .remove-confirm')
             .trigger('click');
         await flushMicrotasks();
 
         expect(loadHotPatchAssembly).toHaveBeenLastCalledWith(
             '/dev/patch.dll',
-            true,
+            ['patch-1'],
         );
-        expect(wrapper.find('.assembly-section .reload-confirm').exists()).toBe(
+        expect(wrapper.find('.assembly-section .patch-list').exists()).toBe(
             false,
         );
         const notice = wrapper.find('.assembly-section .status.warning');
@@ -300,7 +308,7 @@ describe('HotPatchView', () => {
         const wrapper = await mountPanel();
         vi.mocked(loadHotPatchAssembly).mockResolvedValueOnce({
             needsConfirmation: true,
-            patchesFromPreviousLoadDescriptions: ['Prefix on Some.Type.Method'],
+            patchesFromPreviousLoad: [previousGenerationPatch],
         });
         await wrapper
             .find('.assembly-section .path-input')
@@ -319,20 +327,44 @@ describe('HotPatchView', () => {
             { path: '/dev/patch.dll', assemblyName: 'MyPatch', generation: 2 },
         ]);
 
-        const buttons = wrapper.findAll(
-            '.assembly-section .reload-confirm-buttons button',
-        );
-        await buttons[1].trigger('click');
+        await wrapper
+            .find('.assembly-section .patch-row input')
+            .setValue(false);
+        await wrapper
+            .find('.assembly-section .remove-confirm')
+            .trigger('click');
         await flushMicrotasks();
 
         expect(loadHotPatchAssembly).toHaveBeenLastCalledWith(
             '/dev/patch.dll',
-            false,
+            [],
         );
         expect(wrapper.find('.assembly-section .status.warning').exists()).toBe(
             false,
         );
         expect(wrapper.find('.patch-method-section').exists()).toBe(true);
+    });
+
+    it('cancels the reload without loading the assembly', async () => {
+        const wrapper = await mountPanel();
+        vi.mocked(loadHotPatchAssembly).mockResolvedValueOnce({
+            needsConfirmation: true,
+            patchesFromPreviousLoad: [previousGenerationPatch],
+        });
+        await wrapper
+            .find('.assembly-section .path-input')
+            .setValue('/dev/patch.dll');
+        await wrapper.find('.assembly-section button.primary').trigger('click');
+        await flushMicrotasks();
+
+        await wrapper.find('.assembly-section .cancel').trigger('click');
+        await flushMicrotasks();
+
+        expect(loadHotPatchAssembly).toHaveBeenCalledTimes(1);
+        expect(wrapper.find('.assembly-section .patch-list').exists()).toBe(
+            false,
+        );
+        expect(wrapper.find('.patch-method-section').exists()).toBe(false);
     });
 
     it('switches to an already-loaded assembly without calling loadHotPatchAssembly', async () => {
@@ -690,7 +722,7 @@ describe('HotPatchView', () => {
         expect(fetchActiveHotPatches).toHaveBeenCalledOnce();
     });
 
-    it('requires confirmation before removing an active patch, and refreshes the list once confirmed', async () => {
+    it('opens the remove-patches dialog for a single patch, and refreshes the list once confirmed', async () => {
         const activePatch: ActivePatch = {
             id: 'patch-1',
             targetDescription: 'RimWorld.SomeClass.SomeMethod',
@@ -711,24 +743,24 @@ describe('HotPatchView', () => {
             .trigger('click');
         await flushMicrotasks();
 
-        expect(removeHotPatch).not.toHaveBeenCalled();
-        expect(wrapper.find('.active-patches-section .confirm').exists()).toBe(
-            true,
+        expect(removeManyHotPatches).not.toHaveBeenCalled();
+        expect(wrapper.find('.patch-list').exists()).toBe(true);
+        expect(wrapper.find('.patch-list').text()).toContain(
+            'RimWorld.SomeClass.SomeMethod',
         );
 
-        vi.mocked(removeHotPatch).mockResolvedValueOnce({ removed: true });
+        vi.mocked(removeManyHotPatches).mockResolvedValueOnce(['patch-1']);
         vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce([]);
 
-        await wrapper
-            .find('.active-patches-section .confirm button')
-            .trigger('click');
+        await wrapper.find('.remove-confirm').trigger('click');
         await flushMicrotasks();
 
-        expect(removeHotPatch).toHaveBeenCalledWith('patch-1');
+        expect(removeManyHotPatches).toHaveBeenCalledWith(['patch-1']);
         expect(wrapper.findAll('.active-patches-section li')).toHaveLength(0);
+        expect(wrapper.find('.patch-list').exists()).toBe(false);
     });
 
-    it('cancels the pending removal without calling removeHotPatch', async () => {
+    it('closes the remove-patches dialog without calling removeManyHotPatches', async () => {
         const activePatch: ActivePatch = {
             id: 'patch-1',
             targetDescription: 'RimWorld.SomeClass.SomeMethod',
@@ -747,16 +779,11 @@ describe('HotPatchView', () => {
             .trigger('click');
         await flushMicrotasks();
 
-        const confirmButtons = wrapper.findAll(
-            '.active-patches-section .confirm button',
-        );
-        await confirmButtons[1].trigger('click');
+        await wrapper.find('.cancel').trigger('click');
         await flushMicrotasks();
 
-        expect(removeHotPatch).not.toHaveBeenCalled();
-        expect(wrapper.find('.active-patches-section .confirm').exists()).toBe(
-            false,
-        );
+        expect(removeManyHotPatches).not.toHaveBeenCalled();
+        expect(wrapper.find('.patch-list').exists()).toBe(false);
         expect(wrapper.findAll('.active-patches-section li')).toHaveLength(1);
     });
 
@@ -783,7 +810,7 @@ describe('HotPatchView', () => {
         ];
     }
 
-    it('removes only the selected patches after a single batch confirmation', async () => {
+    it('opens the remove-patches dialog with only the selected patches, and removes them once confirmed', async () => {
         vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce(
             twoActivePatches(),
         );
@@ -798,14 +825,14 @@ describe('HotPatchView', () => {
         await flushMicrotasks();
 
         expect(removeManyHotPatches).not.toHaveBeenCalled();
-        expect(wrapper.find('.confirm.bulk').exists()).toBe(true);
+        expect(wrapper.findAll('.patch-list li')).toHaveLength(1);
 
         vi.mocked(removeManyHotPatches).mockResolvedValueOnce(['patch-1']);
         vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce([
             twoActivePatches()[1],
         ]);
 
-        await wrapper.find('.confirm.bulk button').trigger('click');
+        await wrapper.find('.remove-confirm').trigger('click');
         await flushMicrotasks();
 
         expect(removeManyHotPatches).toHaveBeenCalledWith(['patch-1']);
@@ -840,7 +867,7 @@ describe('HotPatchView', () => {
         }
     });
 
-    it('cancels the pending bulk removal without calling removeManyHotPatches', async () => {
+    it('closes the bulk remove-patches dialog without calling removeManyHotPatches', async () => {
         vi.mocked(fetchActiveHotPatches).mockResolvedValueOnce(
             twoActivePatches(),
         );
@@ -854,12 +881,11 @@ describe('HotPatchView', () => {
         await wrapper.find('.active-list-toolbar button').trigger('click');
         await flushMicrotasks();
 
-        const confirmButtons = wrapper.findAll('.confirm.bulk button');
-        await confirmButtons[1].trigger('click');
+        await wrapper.find('.cancel').trigger('click');
         await flushMicrotasks();
 
         expect(removeManyHotPatches).not.toHaveBeenCalled();
-        expect(wrapper.find('.confirm.bulk').exists()).toBe(false);
+        expect(wrapper.find('.patch-list').exists()).toBe(false);
         expect(wrapper.findAll('.active-patches-section li')).toHaveLength(2);
     });
 
