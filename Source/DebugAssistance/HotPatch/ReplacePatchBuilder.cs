@@ -36,6 +36,14 @@ internal static class ReplacePatchBuilder
         nameof(ResolveShim)
     );
 
+    // The shim's IL calls straight into `core` via a bare `call` instruction rather than a
+    // delegate, so nothing about that call keeps `core`'s managing DynamicMethod object alive on
+    // its own -- and once that object is collected, its JIT-compiled native code can be freed out
+    // from under the shim, which then jumps into unmapped memory the next time the target method
+    // runs. Keeping a strong reference here for as long as the shim itself is retained closes that
+    // gap.
+    private static readonly Dictionary<MethodBase, MethodInfo> RetainedCores = [];
+
     internal static (MethodInfo? Shim, string? Error) Build(
         Harmony harmony,
         MethodBase target,
@@ -70,14 +78,19 @@ internal static class ReplacePatchBuilder
             core = built;
         }
 
+        RetainedCores[target] = core;
         PendingShims[target] = BuildPrefix(target, core, targetParameters, targetReturnType);
         return (Factory, null);
     }
 
-    // Drops the shim registered for `target` once its Replace patch is actually removed, so
-    // PendingShims doesn't keep every past Replace target's generated method alive for the rest of
-    // the session.
-    internal static void Forget(MethodBase target) => PendingShims.Remove(target);
+    // Drops the shim (and its retained core) registered for `target` once its Replace patch is
+    // actually removed, so neither dictionary keeps every past Replace target's generated methods
+    // alive for the rest of the session.
+    internal static void Forget(MethodBase target)
+    {
+        _ = PendingShims.Remove(target);
+        _ = RetainedCores.Remove(target);
+    }
 
     // The same exact-match rule PatchCompatibility.IsReplaceCompatible pre-filters the picker
     // with, re-checked here defensively since PatchCompatibility only narrows the picker's list —

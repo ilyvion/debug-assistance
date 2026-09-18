@@ -317,6 +317,43 @@ internal static class HotPatchManagerTests
         Assert.That(instance.Compute(4)).Is.EqualTo(14);
     }
 
+    // Regression test: the reverse-patched static "core" that the Replace shim calls into used to
+    // have no GC root of its own once Build() returned, so a collection between applying the patch
+    // and the target actually running could free its JIT-compiled code out from under the shim.
+    [Test]
+    public static void ApplyingAReplaceOnAnInstanceMethodSurvivesAGarbageCollectionBeforeItRuns()
+    {
+        var manager = new HotPatchManager(
+            "test.debugassistance.hotpatchmanagertests.replaceinstance.gc"
+        );
+        var target = AccessTools.Method(
+            typeof(ReplaceOriginalInstanceType),
+            nameof(ReplaceOriginalInstanceType.Compute)
+        );
+        var replacement = AccessTools.Method(
+            typeof(ReplaceReplacementInstanceType),
+            nameof(ReplaceReplacementInstanceType.Compute)
+        );
+
+        var (patch, error) = manager.Apply(
+            target,
+            replacement,
+            OnTheFlyPatchType.Replace,
+            "fixture.dll",
+            1
+        );
+        Assert.That(error is null).Is.True();
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var instance = new ReplaceOriginalInstanceType();
+        Assert.That(instance.Compute(4)).Is.EqualTo(40);
+
+        Assert.That(manager.Remove(patch!)).Is.True();
+    }
+
     [Test]
     public static void FormatIlDiagnosticMarksTheFailingInstructionAndKeepsSurroundingContext()
     {
