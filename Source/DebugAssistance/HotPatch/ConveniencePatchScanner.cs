@@ -25,7 +25,7 @@ internal static class ConveniencePatchScanner
             {
                 foreach (var method in AccessTools.GetDeclaredMethods(type))
                 {
-                    if (method.GetCustomAttribute<ConveniencePatchAttribute>() is not { } attribute)
+                    if (TryGetAttribute(method) is not { } attribute)
                     {
                         continue;
                     }
@@ -42,6 +42,24 @@ internal static class ConveniencePatchScanner
             }
         }
         return results;
+    }
+
+    // Other mods' methods can carry attributes whose types fail to resolve (e.g. an attribute from
+    // an optional or mismatched dependency); reading those throws, and such methods can't be
+    // convenience patches.
+    private static ConveniencePatchAttribute? TryGetAttribute(MethodInfo method)
+    {
+        try
+        {
+            return method.GetCustomAttribute<ConveniencePatchAttribute>();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(
+                $"[DebugAssistance] Skipping {method.DeclaringType}.{method.Name} while scanning for convenience patches, its attributes could not be read: {ex}"
+            );
+            return null;
+        }
     }
 
     private static OnTheFlyPatchType ToOnTheFlyPatchType(ConveniencePatchType patchType) =>
