@@ -11,7 +11,7 @@ The Hot Patch view lets you load a Harmony patch assembly you've built yourself,
     <supportedVersions>
         <li>1.6</li>
     </supportedVersions>
-    <modVersion>0.1.0</modVersion>
+    <modVersion>0.2.0</modVersion>
     <modDependencies>
         <li>
             <packageId>brrainz.harmony</packageId>

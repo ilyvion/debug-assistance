@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-27
+
 ### Added
 
 - Probes: on the Hot Patch view, pick a method and click 'Add probe' to record who calls it and from where, without needing an error to happen. Any stack frame shown in an error or a probe hit also gets its own 'Probe this method' button for the same purpose. Each unique call stack that invokes the method is captured once, with a running count of total and unique calls shown in an 'Active probes' panel that keeps itself up to date while you're on the Hot Patch view; a probe stops tracking automatically once it's recorded a very large number of calls, to keep the overhead bounded. Captured probe hits get their own 'Probes' section, where they can be decompiled, used to jump into Hot Patch on any frame, and turned into an AI prompt, the same as captured errors. Errors, Hot Patch, and Probes are all presented as equal, side-by-side pages via a shared set of tabs.
@@ -32,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In the Error Inspector's stack frame listing, each applied patch now shows its fully qualified type and method name instead of just the method name.
 - The Hot Patch view's target-method picker now lists constructors alongside ordinary methods, shown as `TypeName(parameters)`. Previously constructors never appeared in the list at all, so they couldn't be picked as a patch target.
 - Searching a type's own name plus its constructor (e.g. `Pawn.Pawn`) in the method pickers now finds its constructors, matching how searching just the type name alone already did. A type's static constructor is now shown as `static TypeName()` so it's no longer indistinguishable from its parameterless instance constructor.
-- Searching in the target-method or patch-method picker while browsing inside a specific assembly, namespace, or type now puts methods declared there ahead of equally-matching methods elsewhere, instead of treating every loaded method as equally relevant. For example, searching "Draw" while browsing `Pawn`'s own methods now puts `Pawn.Draw` ahead of an unrelated `DrawStyle.Draw`.
+- Searching in the target-method or patch-method picker while browsing inside a specific assembly, namespace, or type now puts methods declared there ahead of equally-matching methods elsewhere, instead of treating every loaded method as equally relevant. For example, searching 'Draw' while browsing `Pawn`'s own methods now puts `Pawn.Draw` ahead of an unrelated `DrawStyle.Draw`.
 
 ## [0.1.0] - 2026-09-10
 
@@ -41,5 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An Error Inspector for browsing captured errors, with inline decompilation of stack frames and applied Harmony patches.
 - A Hot Patch view for hot-loading assemblies with patches and applying them live, without restarting the game, as well as a button to scaffold a ready-to-build patch project for a given target method.
 
-[Unreleased]: https://github.com/ilyvion/debug-assistance/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ilyvion/debug-assistance/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ilyvion/debug-assistance/compare/v0.1.0..v0.2.0
 [0.1.0]: https://github.com/ilyvion/debug-assistance/releases/tag/v0.1.0
